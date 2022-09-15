@@ -1,0 +1,11 @@
+inoremap <C-j> <esc>
+vnoremap <C-j> <esc>
+nnoremap <C-j> <esc>
+
+nnoremap j gj
+nnoremap gj j
+nnoremap k gk
+nnoremap gk k
+
+nnoremap ; :
+nnoremap : ;

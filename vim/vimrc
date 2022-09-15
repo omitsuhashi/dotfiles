@@ -1,0 +1,30 @@
+
+   
+"Key mappings
+source ~/.vim/vimrc.keymap
+
+"General settings
+
+set number
+set title
+set showmatch
+set noswapfile
+syntax on
+
+set ambiwidth=double
+set tabstop=2
+set expandtab
+set shiftwidth=2
+set smartindent
+
+set virtualedit=block
+set backspace=indent,eol,start
+set ambiwidth=double
+
+" Search settings
+
+set ignorecase
+set smartcase
+set wrapscan
+set incsearch
+
