@@ -8,7 +8,9 @@ export LANG='en_US.UTF-8'
 export HDF5_DIR=/opt/homebrew/opt/hdf5
 
 # brew
-eval "$(/opt/homebrew/bin/brew shellenv)"
+if [[ $(uname -m) == 'arm64' ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
 
 # nodenv
 export PATH="$HOME/.nodenv/bin:$PATH"
