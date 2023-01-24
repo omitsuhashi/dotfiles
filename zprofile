@@ -6,6 +6,7 @@ export LC_ALL='en_US.UTF-8'
 export LANG='en_US.UTF-8'
 
 export HDF5_DIR=/opt/homebrew/opt/hdf5
+export TOOL_DIR=$HOME/.tool
 
 # brew
 if [[ $(uname -m) == 'arm64' ]]; then
@@ -43,4 +44,7 @@ export PATH="$PATH":"$HOME/.pub-cache/bin"
 export GOPATH=$HOME/go
 export GOBIN=$GOPATH/bin
 export PATH="$PATH:$GOBIN"
+
+# flutter
+export PATH="$PATH:$TOOL_DIR/flutter/bin"
 
