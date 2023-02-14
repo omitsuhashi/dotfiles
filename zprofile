@@ -23,7 +23,7 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
 # pipenv
-export PIPENV_VENV_IN_PROJECT=true
+export PIPENV_VENV_IN_PROJECT=false
 
 # direnv
 eval "$(direnv hook zsh)"
