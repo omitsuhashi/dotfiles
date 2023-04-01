@@ -5,6 +5,9 @@ export LSCOLORS=gxfxcxdxbxegedabagacad
 export LC_ALL='en_US.UTF-8'
 export LANG='en_US.UTF-8'
 
+export LDFLAGS="-L/usr/local/opt/openssl/lib"
+export CPPFLAGS="-I/usr/local/opt/openssl/include"
+
 export HDF5_DIR=/opt/homebrew/opt/hdf5
 export TOOL_DIR=$HOME/.tool
 
@@ -27,6 +30,9 @@ export PIPENV_VENV_IN_PROJECT=false
 
 # direnv
 eval "$(direnv hook zsh)"
+
+# rvenv
+eval "$(rbenv init - zsh)"
 
 # openjdk
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
