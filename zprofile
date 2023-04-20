@@ -65,7 +65,6 @@ export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 export PATH="/usr/local/go/bin:$PATH"
 
 # rust
-export PATH="$HOME/.cargo/bin:$PATH"
 
 # dart
 export PATH="$PATH":"$HOME/.pub-cache/bin"
@@ -77,4 +76,7 @@ export PATH="$PATH:$GOBIN"
 
 # flutter
 export PATH="$PATH:$TOOL_DIR/flutter/bin"
+
+# rust
+export PATH="$PATH:$HOME/.cargo/bin"
 
