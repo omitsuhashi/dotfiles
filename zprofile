@@ -26,7 +26,7 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
 # pipenv
-export PIPENV_VENV_IN_PROJECT=false
+export PIPENV_VENV_IN_PROJECT=true
 
 # direnv
 eval "$(direnv hook zsh)"
@@ -79,4 +79,3 @@ export PATH="$PATH:$TOOL_DIR/flutter/bin"
 
 # rust
 export PATH="$PATH:$HOME/.cargo/bin"
-
