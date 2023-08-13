@@ -61,11 +61,6 @@ jenv() {
 # openjdk
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 
-# golang
-export PATH="/usr/local/go/bin:$PATH"
-
-# rust
-
 # dart
 export PATH="$PATH":"$HOME/.pub-cache/bin"
 
@@ -73,9 +68,6 @@ export PATH="$PATH":"$HOME/.pub-cache/bin"
 export GOPATH=$HOME/go
 export GOBIN=$GOPATH/bin
 export PATH="$PATH:$GOBIN"
-
-# flutter
-export PATH="$PATH:$TOOL_DIR/flutter/bin"
 
 # rust
 export PATH="$PATH:$HOME/.cargo/bin"
