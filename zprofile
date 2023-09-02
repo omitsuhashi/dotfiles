@@ -71,3 +71,6 @@ export PATH="$PATH:$GOBIN"
 
 # rust
 export PATH="$PATH:$HOME/.cargo/bin"
+
+# flutter
+export PATH="$PATH:$HOME/.tools/flutter/bin"
