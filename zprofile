@@ -12,7 +12,7 @@ export HDF5_DIR=/opt/homebrew/opt/hdf5
 export TOOL_DIR=$HOME/.tool
 
 # alias
-alias tf=`terraform`
+alias tf='terraform'
 
 # brew
 if [[ $(uname -m) == 'arm64' ]]; then
