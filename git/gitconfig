@@ -1,4 +1,16 @@
+[core]
+	excludesfile = /Users/omitsuhashi/.gitignore_global
+	autocrlf = input
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path =
+[mergetool "sourcetree"]
+	cmd = /Applications/Sourcetree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true
 [user]
 	name = Osamu Mitsuhashi
 	email = osamu.mitsuhashi224@gmail.com
-
+[includeIf "gitdir:~/repos/m3/"]
+  path = ~/.m3.gitconfig
+[commit]
+	template = /Users/omitsuhashi/.stCommitMsg
