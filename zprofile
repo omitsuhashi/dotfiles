@@ -13,6 +13,8 @@ export TOOL_DIR=$HOME/.tool
 
 # alias
 alias tf='terraform'
+alias start-pg='brew services start postgresql@16'
+alias stop-pg='brew services stop postgresql@16'
 
 # brew
 if [[ $(uname -m) == 'arm64' ]]; then
