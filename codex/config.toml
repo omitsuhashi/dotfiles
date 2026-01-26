@@ -1,0 +1,113 @@
+hide_agent_reasoning = true
+network_access = true
+model = "gpt-5.2-codex"
+model_reasoning_effort = "high"
+web_search_request = true
+
+[sandbox_workspace_write]
+network_access = true
+
+[profiles.sandbox]
+sandbox_mode    = "workspace-write"
+approval_policy = "never"
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp@latest"]
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]
+
+[projects."/Users/omitsuhashi/repos/toyota/tot-kal-amplify"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/the3/smartra/.git/modules"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/the3/smartra/.git/modules/front"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/simount"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/simount/pms-api"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/simount/pms-frontend"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/toyota/pe-backstage"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/toyota/tot-backstage"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/the3/whisper/server"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/the3/whisper/whisper"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/toyota/tot-infra"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/the3/media"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/toyota/tmpl-amplify"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/toyota/dxpf-amplify-verification"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/the3/smartra"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/public/downloader"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/public/models"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/public/tae"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/public/sam3"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/toyota"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/toyota/dxpf-ref-amplify-verification"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/relspec"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/the3/gmen/server"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/public/knowledge"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/repos/public/magma"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/.codex/skills/epic-subissue-runner"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi/dotfiles"]
+trust_level = "trusted"
+
+[notice]
+hide_gpt5_1_migration_prompt = true
+"hide_gpt-5.1-codex-max_migration_prompt" = true
+
+[notice.model_migrations]
+"gpt-5.1-codex-max" = "gpt-5.2-codex"
+
+[features]
+unified_exec = true
+skills = true
+

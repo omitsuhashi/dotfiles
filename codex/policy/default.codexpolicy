@@ -1,0 +1,8 @@
+prefix_rule(pattern=["git", "fetch"], decision="allow")
+prefix_rule(pattern=["go", "test", "./internal/checkout/..."], decision="allow")
+prefix_rule(pattern=["rm", "-rf", ".gopath"], decision="allow")
+prefix_rule(pattern=["wire", "./internal/platform/di"], decision="allow")
+prefix_rule(pattern=["make", "build"], decision="allow")
+prefix_rule(pattern=["make", "lint"], decision="allow")
+prefix_rule(pattern=["go", "test", "-tags", "integration", "./internal/platform/idempotency/postgres", "-run", "TestPGIdempotencyStore_CompleteKeepsTTL"], decision="allow")
+prefix_rule(pattern=["rm", "-f", "tmp/sqlc.digest"], decision="allow")

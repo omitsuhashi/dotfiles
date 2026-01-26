@@ -1,0 +1,23 @@
+source ~/.vim/vimrc.keymap
+
+set surround
+
+" search in idea
+nnoremap / :<C-u>action Find<CR>
+
+" jump to method
+nnoremap [m :<C-u>action MethodUp<CR>
+nnoremap ]m :<C-u>action MethodDown<CR>
+
+" jump to change
+nnoremap [c :<C-u>action VcsShowPrevChangeMarker<CR>
+nnoremap ]c :<C-u>action VcsShowNextChangeMarker<CR>
+
+
+" jump to error
+nnoremap [e :<C-u>action GotoPreviousError<CR>
+nnoremap ]e :<C-u>action GotoNextError<CR>
+
+" change name
+nnoremap cre :<C-u>action RenameElement<CR>
+

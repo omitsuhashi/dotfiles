@@ -1,0 +1,22 @@
+[core]
+	excludesfile = /Users/omitsuhashi/.gitignore_global
+	autocrlf = input
+
+[user]
+	name = Osamu Mitsuhashi
+	email = 3690170+omitsuhashi@users.noreply.github.com
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFztZc0bLIx7J0/Jb9Zwajo83KhfHKzc0l+YtJXM3CL1
+
+[includeIf "gitdir:~/repos/simount/"]
+  path = ~/repos/simount/.gitconfig
+
+[includeIf "gitdir:~/repos/toyota/"]
+  path = ~/repos/toyota/.gitconfig
+
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+[init]
+	defaultBranch = main
