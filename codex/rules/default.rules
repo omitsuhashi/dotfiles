@@ -145,3 +145,8 @@ prefix_rule(pattern=["git", "add", "e2e/delivery-requests.spec.ts", "docs/plans/
 prefix_rule(pattern=["git", "commit", "-m", "test(e2e): add delivery requests list-to-detail smoke"], decision="allow")
 prefix_rule(pattern=["git", "add", "-f", "internal/order/infra/persistence/postgres/dbgen"], decision="allow")
 prefix_rule(pattern=["git", "commit", "-m", "feat: implement orders delivery requests list"], decision="allow")
+prefix_rule(pattern=["git", "clone", "https://github.com/obra/superpowers.git", "."], decision="allow")
+prefix_rule(pattern=["mkdir", "-p", "~/.codex/skills"], decision="allow")
+prefix_rule(pattern=["test", "-f", "~/.codex/AGENTS.md"], decision="allow")
+prefix_rule(pattern=["~/.codex/superpowers/.codex/superpowers-codex", "bootstrap"], decision="allow")
+prefix_rule(pattern=["~/.codex/superpowers/.codex/superpowers-codex", "use-skill", "superpowers:using-superpowers"], decision="allow")
