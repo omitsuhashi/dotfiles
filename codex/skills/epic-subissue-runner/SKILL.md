@@ -26,11 +26,14 @@ allowed-tools: Read, Grep, Glob, Edit, Bash(git:*), Bash(gh:*)
    - `scripts/assert_worktree.sh` を実行し、OK になるまで進めない
    - default branch 上なら停止（依頼者に確認してもらう）
 
-2) **sub-issue 一覧を抽出**
+2) **epicで全体像を把握**
+   - 指定したepic本文から全体像を把握する
+
+3) **sub-issue 一覧を抽出**
    - `scripts/list_subissues.sh $ARGUMENTS` を実行
    - Sub-issues API を最優先で取得し、0件/失敗時のみ Epic本文の `- [ ]` タスク行から抽出（`- [x]` はスキップ）
 
-3) **sub-issue を順に処理（各件で必須）**
+4) **sub-issue を順に処理（各件で必須）**
    - `gh issue view <sub>` で本文を読み、本文に従って実装する
    - 曖昧/衝突/不足（例：期待I/O不明、影響範囲が複数解釈、手順が矛盾）なら **即停止して依頼者に確認**
    - 実装中の途中コミットは任意。ただし **完了時には最低1コミット** 必須
