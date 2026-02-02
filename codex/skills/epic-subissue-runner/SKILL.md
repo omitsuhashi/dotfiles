@@ -41,10 +41,11 @@ allowed-tools: Read, Grep, Glob, Edit, Bash(git:*), Bash(gh:*)
    - 完了前ゲート
      - worktree で bash scripts/run_issue_gates.sh を実行
      - 失敗したら停止（修正 or 依頼者確認）
-     - 成功したら その後に commit → close
-   - 完了したら `scripts/close_issue.sh <sub>` を実行して close（reason=completed）
+     - 成功したら その後に commit
+   - 完了したらPRを作成
 
 ## 禁止事項
 - Issue本文にない仕様の追加・自己判断での要件補完
 - 依頼者確認が必要な曖昧点を抱えたままの続行
+- epicを閉じたり、statusを完了にしたりしないこと
 

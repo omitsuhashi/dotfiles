@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from typing import List, Optional, Tuple
+
+
+FENCE_RE = re.compile(r"^\s*(```|~~~)\s*([A-Za-z0-9_-]+)?\s*$")
+HEADING_RE = re.compile(r"^\s*#{1,6}\s+(.*\S)\s*$")
+ISSUE_URL_RE = re.compile(r"/issues/(\d+)(?:$|[/?#])")
+
+
+@dataclass
+class Block:
+    internal_index: int  # 0-based within parsed blocks
+    title: str
+    body: str  # markdown body without the title heading line
+
+
+def run(cmd: List[str], *, check: bool = True) -> str:
+    p = subprocess.run(cmd, text=True, capture_output=True)
+    if check and p.returncode != 0:
+        raise RuntimeError(
+            f"Command failed ({p.returncode}): {' '.join(cmd)}\n"
+            f"STDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
+        )
+    return (p.stdout or "").strip()
+
+
+def ensure_gh_ready() -> None:
+    try:
+        run(["gh", "--version"])
+    except Exception as e:
+        raise RuntimeError("`gh` not found. Install GitHub CLI first.") from e
+
+    # auth status returns non-zero if not authenticated
+    try:
+        run(["gh", "auth", "status"])
+    except Exception as e:
+        raise RuntimeError("`gh` is not authenticated. Run `gh auth login`.") from e
+
+
+def detect_repo() -> Optional[str]:
+    # Works when executed inside a git repo where `gh repo view` can resolve the repo.
+    try:
+        return run(["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"])
+    except Exception:
+        return None
+
+
+def extract_fenced_markdown_blocks(text: str) -> List[str]:
+    lines = text.splitlines()
+    blocks: List[str] = []
+    i = 0
+    while i < len(lines):
+        m = FENCE_RE.match(lines[i])
+        if m:
+            fence = m.group(1)
+            lang = (m.group(2) or "").lower()
+            if lang in ("markdown", "md"):
+                i += 1
+                buf: List[str] = []
+                while i < len(lines) and lines[i].strip() != fence:
+                    buf.append(lines[i])
+                    i += 1
+                blocks.append("\n".join(buf).rstrip() + "\n")
+        i += 1
+    return blocks
+
+
+def extract_title_and_body(block: str) -> Tuple[str, str]:
+    lines = block.splitlines()
+
+    for idx, line in enumerate(lines):
+        m = HEADING_RE.match(line)
+        if m:
+            title = m.group(1).strip()
+            body_lines = lines[idx + 1 :]
+            while body_lines and body_lines[0].strip() == "":
+                body_lines.pop(0)
+            body = "\n".join(body_lines).rstrip() + "\n"
+            return title, body
+
+    for idx, line in enumerate(lines):
+        if line.strip():
+            title = line.strip()[:120]
+            body_lines = lines[idx + 1 :]
+            while body_lines and body_lines[0].strip() == "":
+                body_lines.pop(0)
+            body = "\n".join(body_lines).rstrip() + "\n"
+            return title, body
+
+    return "Untitled", block.rstrip() + "\n"
+
+
+def parse_blocks(text: str) -> List[Block]:
+    raw_blocks = extract_fenced_markdown_blocks(text)
+    if not raw_blocks:
+        raise RuntimeError("No `~~~markdown` (or ```markdown) fenced blocks found.")
+
+    parsed: List[Block] = []
+    for i, raw in enumerate(raw_blocks):
+        title, body = extract_title_and_body(raw)
+        parsed.append(Block(internal_index=i, title=title, body=body))
+    return parsed
+
+
+def gh_issue_create(*, repo: str, title: str, body: str, labels: List[str]) -> Tuple[int, str]:
+    with NamedTemporaryFile("w", delete=False, encoding="utf-8") as f:
+        f.write(body)
+        body_path = f.name
+
+    try:
+        cmd = ["gh", "issue", "create", "--repo", repo, "--title", title, "--body-file", body_path]
+        for lab in labels:
+            cmd += ["--label", lab]
+        out = run(cmd)
+        # gh prints the URL; parse issue number from it
+        m = ISSUE_URL_RE.search(out)
+        if not m:
+            raise RuntimeError(f"Could not parse issue number from gh output: {out}")
+        num = int(m.group(1))
+        return num, out.strip()
+    finally:
+        try:
+            os.unlink(body_path)
+        except OSError:
+            pass
+
+
+def gh_issue_edit_body(*, repo: str, number: int, body: str) -> None:
+    with NamedTemporaryFile("w", delete=False, encoding="utf-8") as f:
+        f.write(body)
+        body_path = f.name
+    try:
+        run(["gh", "issue", "edit", str(number), "--repo", repo, "--body-file", body_path])
+    finally:
+        try:
+            os.unlink(body_path)
+        except OSError:
+            pass
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Publish chat-generated epic + issues to GitHub.")
+    ap.add_argument("--input", "-i", default="-", help="Input file path, or '-' for stdin.")
+    ap.add_argument("--repo", "-r", default="", help="Target repo as owner/name. Auto-detected if omitted.")
+    ap.add_argument("--apply", action="store_true", help="Actually create/edit issues. Default is dry-run.")
+    ap.add_argument("--out", default="./.issue-importer/issue_map.json", help="Write mapping JSON here.")
+    ap.add_argument("--label", action="append", default=[], help="Label to add to ALL issues (repeatable).")
+    ap.add_argument("--epic-label", action="append", default=[], help="Extra label to add to Epic only (repeatable).")
+    args = ap.parse_args()
+
+    text = sys.stdin.read() if args.input == "-" else Path(args.input).read_text(encoding="utf-8")
+
+    blocks = parse_blocks(text)
+    epic = blocks[0]
+    subs = blocks[1:]
+
+    repo = args.repo.strip() or detect_repo()
+    if not repo:
+        raise RuntimeError("Could not detect repo. Run inside the repo or pass --repo owner/name.")
+
+    plan_lines = []
+    plan_lines.append(f"[PLAN] repo={repo}")
+    plan_lines.append(f"[PLAN] epic: {epic.title}")
+    for b in subs:
+        plan_lines.append(f"[PLAN] sub[{b.internal_index}]: {b.title}")
+    print("\n".join(plan_lines))
+
+    if not args.apply:
+        print("\nDry-run only. Re-run with --apply to create issues.")
+        return 0
+
+    ensure_gh_ready()
+
+    # 1) Create epic
+    epic_labels = list(args.label) + list(args.epic_label)
+    epic_num, epic_url = gh_issue_create(repo=repo, title=epic.title, body=epic.body, labels=epic_labels)
+
+    created = []
+    # 2) Create sub-issues
+    for b in subs:
+        num, url = gh_issue_create(repo=repo, title=b.title, body=b.body, labels=list(args.label))
+        created.append({"internal_index": b.internal_index, "title": b.title, "number": num, "url": url})
+
+    # 3) Update epic body with checklist
+    checklist = ["", "---", "", "## Sub-issues", ""]
+    for item in created:
+        checklist.append(f"- [ ] #{item['number']} — {item['title']}")
+    epic_body_final = (epic.body.rstrip() + "\n") + "\n".join(checklist) + "\n"
+    gh_issue_edit_body(repo=repo, number=epic_num, body=epic_body_final)
+
+    # 4) Add epic backlink footer to sub-issues (edit body)
+    for item in created:
+        internal_idx = item["internal_index"]
+        # find original block
+        b = next(x for x in subs if x.internal_index == internal_idx)
+        footer = [
+            "",
+            "---",
+            "",
+            f"Epic: #{epic_num}",
+            f"Internal-ID: ISSUE-{internal_idx}",
+        ]
+        sub_body_final = (b.body.rstrip() + "\n") + "\n".join(footer) + "\n"
+        gh_issue_edit_body(repo=repo, number=item["number"], body=sub_body_final)
+
+    # 5) Save mapping
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "repo": repo,
+        "epic": {"title": epic.title, "number": epic_num, "url": epic_url},
+        "sub_issues": created,
+    }
+    out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    print("\n[OK] Created:")
+    print(f"- Epic: #{epic_num} {epic_url}")
+    for item in created:
+        print(f"- #{item['number']} {item['url']}")
+    print(f"[OK] Mapping: {out_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
+        raise
