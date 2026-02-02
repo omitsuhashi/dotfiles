@@ -108,7 +108,3 @@ gtr() {
     --add-dir "$common_abs" \
     "$@"
 }
-
-# tailscale
-alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
-
