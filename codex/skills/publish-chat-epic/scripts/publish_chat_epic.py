@@ -16,6 +16,7 @@ from typing import List, Optional, Tuple
 FENCE_RE = re.compile(r"^\s*(```|~~~)\s*([A-Za-z0-9_-]+)?\s*$")
 HEADING_RE = re.compile(r"^\s*#{1,6}\s+(.*\S)\s*$")
 ISSUE_URL_RE = re.compile(r"/issues/(\d+)(?:$|[/?#])")
+DEFAULT_EPIC_LABEL = "epic"
 
 
 @dataclass
@@ -149,6 +150,55 @@ def gh_issue_edit_body(*, repo: str, number: int, body: str) -> None:
             pass
 
 
+def build_epic_labels(*, labels: List[str], epic_labels: List[str]) -> List[str]:
+    merged = list(labels) + list(epic_labels)
+    if DEFAULT_EPIC_LABEL not in merged:
+        merged.append(DEFAULT_EPIC_LABEL)
+    seen = set()
+    result: List[str] = []
+    for lab in merged:
+        if lab in seen:
+            continue
+        seen.add(lab)
+        result.append(lab)
+    return result
+
+
+def gh_issue_get_id(*, repo: str, number: int) -> int:
+    out = run(
+        [
+            "gh",
+            "api",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "X-GitHub-Api-Version: 2022-11-28",
+            f"repos/{repo}/issues/{number}",
+            "--jq",
+            ".id",
+        ]
+    )
+    return int(out.strip())
+
+
+def gh_issue_add_subissue(*, repo: str, parent_number: int, sub_issue_id: int) -> None:
+    run(
+        [
+            "gh",
+            "api",
+            "-X",
+            "POST",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "X-GitHub-Api-Version: 2022-11-28",
+            f"repos/{repo}/issues/{parent_number}/sub_issues",
+            "-f",
+            f"sub_issue_id={sub_issue_id}",
+        ]
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Publish chat-generated epic + issues to GitHub.")
     ap.add_argument("--input", "-i", default="-", help="Input file path, or '-' for stdin.")
@@ -183,23 +233,26 @@ def main() -> int:
     ensure_gh_ready()
 
     # 1) Create epic
-    epic_labels = list(args.label) + list(args.epic_label)
+    epic_labels = build_epic_labels(labels=list(args.label), epic_labels=list(args.epic_label))
     epic_num, epic_url = gh_issue_create(repo=repo, title=epic.title, body=epic.body, labels=epic_labels)
 
     created = []
     # 2) Create sub-issues
     for b in subs:
         num, url = gh_issue_create(repo=repo, title=b.title, body=b.body, labels=list(args.label))
-        created.append({"internal_index": b.internal_index, "title": b.title, "number": num, "url": url})
+        sub_issue_id = gh_issue_get_id(repo=repo, number=num)
+        gh_issue_add_subissue(repo=repo, parent_number=epic_num, sub_issue_id=sub_issue_id)
+        created.append(
+            {
+                "internal_index": b.internal_index,
+                "title": b.title,
+                "number": num,
+                "url": url,
+                "id": sub_issue_id,
+            }
+        )
 
-    # 3) Update epic body with checklist
-    checklist = ["", "---", "", "## Sub-issues", ""]
-    for item in created:
-        checklist.append(f"- [ ] #{item['number']} — {item['title']}")
-    epic_body_final = (epic.body.rstrip() + "\n") + "\n".join(checklist) + "\n"
-    gh_issue_edit_body(repo=repo, number=epic_num, body=epic_body_final)
-
-    # 4) Add epic backlink footer to sub-issues (edit body)
+    # 3) Add epic backlink footer to sub-issues (edit body)
     for item in created:
         internal_idx = item["internal_index"]
         # find original block
@@ -214,7 +267,7 @@ def main() -> int:
         sub_body_final = (b.body.rstrip() + "\n") + "\n".join(footer) + "\n"
         gh_issue_edit_body(repo=repo, number=item["number"], body=sub_body_final)
 
-    # 5) Save mapping
+    # 4) Save mapping
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {

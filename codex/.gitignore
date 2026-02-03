@@ -10,3 +10,8 @@
 /.issue-importer/
 /docs/plans/
 /shell_snapshots/
+/skills/security-*
+/.codex-global-state.json
+/sqlite/codex-dev.db
+/vendor_imports/skills-curated-cache.json
+/.personality_migration
