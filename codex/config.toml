@@ -12,7 +12,7 @@ network_access = true
 sandbox_mode    = "workspace-write"
 approval_policy = "never"
 model = "gpt-5.2-codex"
-model_reasoning_effort = "low"
+model_reasoning_effort = "high"
 personality = "pragmatic"
 
 [mcp_servers.context7]
@@ -119,8 +119,4 @@ unified_exec = true
 skills = true
 shell_snapshot = true
 apps = true
-
-[[skills.config]]
-path = "/Users/omitsuhashi/dotfiles/codex/skills/epic-subissue-runner/SKILL.md"
-enabled = false
 
