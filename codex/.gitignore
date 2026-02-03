@@ -15,3 +15,4 @@
 /sqlite/codex-dev.db
 /vendor_imports/skills-curated-cache.json
 /.personality_migration
+/skills/*/docs/plans/

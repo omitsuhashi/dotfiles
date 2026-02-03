@@ -21,6 +21,7 @@
 ~~~
 
 Rules:
-- First block = Epic
-- Remaining blocks = sub-issues
+- Blocks with headings containing "Epic" are treated as Epics (case-insensitive).
+- Each Epic groups following blocks until the next Epic.
+- If no Epic is found, the first block is treated as the Epic (backward compatible).
 - First heading line inside each block becomes the GitHub Issue title and is removed from body.

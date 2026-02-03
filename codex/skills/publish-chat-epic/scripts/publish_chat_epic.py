@@ -26,6 +26,48 @@ class Block:
     body: str  # markdown body without the title heading line
 
 
+@dataclass
+class EpicGroup:
+    epic: Block
+    subs: List[Block]
+
+
+def is_epic_title(title: str) -> bool:
+    return "epic" in title.lower()
+
+
+def group_epic_blocks(blocks: List[Block]) -> List[EpicGroup]:
+    epic_indices = [i for i, b in enumerate(blocks) if is_epic_title(b.title)]
+    if not epic_indices:
+        if not blocks:
+            return []
+        return [EpicGroup(epic=blocks[0], subs=blocks[1:])]
+    groups: List[EpicGroup] = []
+    for idx, epic_idx in enumerate(epic_indices):
+        epic = blocks[epic_idx]
+        start = epic_idx + 1
+        end = epic_indices[idx + 1] if idx + 1 < len(epic_indices) else len(blocks)
+        subs = blocks[start:end]
+        groups.append(EpicGroup(epic=epic, subs=subs))
+    return groups
+
+
+def build_plan_lines(repo: str, groups: List[EpicGroup]) -> List[str]:
+    lines = [f"[PLAN] repo={repo}"]
+    for group in groups:
+        lines.append(f"[PLAN] epic: {group.epic.title}")
+        for b in group.subs:
+            lines.append(f"[PLAN] sub[{b.internal_index}]: {b.title}")
+    return lines
+
+
+def build_mapping_payload(*, repo: str, epics: List[dict]) -> dict:
+    return {
+        "repo": repo,
+        "epics": epics,
+    }
+
+
 def run(cmd: List[str], *, check: bool = True) -> str:
     p = subprocess.run(cmd, text=True, capture_output=True)
     if check and p.returncode != 0:
@@ -212,19 +254,15 @@ def main() -> int:
     text = sys.stdin.read() if args.input == "-" else Path(args.input).read_text(encoding="utf-8")
 
     blocks = parse_blocks(text)
-    epic = blocks[0]
-    subs = blocks[1:]
+    groups = group_epic_blocks(blocks)
+    if not groups:
+        raise RuntimeError("No blocks found after parsing.")
 
     repo = args.repo.strip() or detect_repo()
     if not repo:
         raise RuntimeError("Could not detect repo. Run inside the repo or pass --repo owner/name.")
 
-    plan_lines = []
-    plan_lines.append(f"[PLAN] repo={repo}")
-    plan_lines.append(f"[PLAN] epic: {epic.title}")
-    for b in subs:
-        plan_lines.append(f"[PLAN] sub[{b.internal_index}]: {b.title}")
-    print("\n".join(plan_lines))
+    print("\n".join(build_plan_lines(repo, groups)))
 
     if not args.apply:
         print("\nDry-run only. Re-run with --apply to create issues.")
@@ -232,55 +270,63 @@ def main() -> int:
 
     ensure_gh_ready()
 
-    # 1) Create epic
-    epic_labels = build_epic_labels(labels=list(args.label), epic_labels=list(args.epic_label))
-    epic_num, epic_url = gh_issue_create(repo=repo, title=epic.title, body=epic.body, labels=epic_labels)
+    epic_records = []
+    created_lines = []
+    for group in groups:
+        # 1) Create epic
+        epic_labels = build_epic_labels(labels=list(args.label), epic_labels=list(args.epic_label))
+        epic_num, epic_url = gh_issue_create(
+            repo=repo, title=group.epic.title, body=group.epic.body, labels=epic_labels
+        )
+        created_lines.append(f"- Epic: #{epic_num} {epic_url}")
 
-    created = []
-    # 2) Create sub-issues
-    for b in subs:
-        num, url = gh_issue_create(repo=repo, title=b.title, body=b.body, labels=list(args.label))
-        sub_issue_id = gh_issue_get_id(repo=repo, number=num)
-        gh_issue_add_subissue(repo=repo, parent_number=epic_num, sub_issue_id=sub_issue_id)
-        created.append(
+        created = []
+        # 2) Create sub-issues
+        for b in group.subs:
+            num, url = gh_issue_create(repo=repo, title=b.title, body=b.body, labels=list(args.label))
+            sub_issue_id = gh_issue_get_id(repo=repo, number=num)
+            gh_issue_add_subissue(repo=repo, parent_number=epic_num, sub_issue_id=sub_issue_id)
+            created.append(
+                {
+                    "internal_index": b.internal_index,
+                    "title": b.title,
+                    "number": num,
+                    "url": url,
+                    "id": sub_issue_id,
+                }
+            )
+            created_lines.append(f"- #{num} {url}")
+
+        # 3) Add epic backlink footer to sub-issues (edit body)
+        for item in created:
+            internal_idx = item["internal_index"]
+            b = next(x for x in group.subs if x.internal_index == internal_idx)
+            footer = [
+                "",
+                "---",
+                "",
+                f"Epic: #{epic_num}",
+                f"Internal-ID: ISSUE-{internal_idx}",
+            ]
+            sub_body_final = (b.body.rstrip() + "\n") + "\n".join(footer) + "\n"
+            gh_issue_edit_body(repo=repo, number=item["number"], body=sub_body_final)
+
+        epic_records.append(
             {
-                "internal_index": b.internal_index,
-                "title": b.title,
-                "number": num,
-                "url": url,
-                "id": sub_issue_id,
+                "epic": {"title": group.epic.title, "number": epic_num, "url": epic_url},
+                "sub_issues": created,
             }
         )
-
-    # 3) Add epic backlink footer to sub-issues (edit body)
-    for item in created:
-        internal_idx = item["internal_index"]
-        # find original block
-        b = next(x for x in subs if x.internal_index == internal_idx)
-        footer = [
-            "",
-            "---",
-            "",
-            f"Epic: #{epic_num}",
-            f"Internal-ID: ISSUE-{internal_idx}",
-        ]
-        sub_body_final = (b.body.rstrip() + "\n") + "\n".join(footer) + "\n"
-        gh_issue_edit_body(repo=repo, number=item["number"], body=sub_body_final)
 
     # 4) Save mapping
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "repo": repo,
-        "epic": {"title": epic.title, "number": epic_num, "url": epic_url},
-        "sub_issues": created,
-    }
+    payload = build_mapping_payload(repo=repo, epics=epic_records)
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     print("\n[OK] Created:")
-    print(f"- Epic: #{epic_num} {epic_url}")
-    for item in created:
-        print(f"- #{item['number']} {item['url']}")
+    for line in created_lines:
+        print(line)
     print(f"[OK] Mapping: {out_path}")
     return 0
 
