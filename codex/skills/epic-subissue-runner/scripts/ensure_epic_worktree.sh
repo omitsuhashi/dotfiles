@@ -63,13 +63,24 @@ extract_doc_pin_from_body() {
     printf '%s\n' "$deps" \
       | sed -nE 's/^[[:space:]]*[-*]?[[:space:]]*(https?:\/\/github\.com\/[^[:space:]]+\/(issues|pull)\/[0-9]+).*/\1/p'
   )
-  if (( ${#dep_urls[@]} == 0 )); then
-    return 0
-  fi
   if (( ${#dep_urls[@]} > 1 )); then
     die "multiple DependsOn URLs found; specify exactly one doc pin via ## SubmodulePins (doc=...)"
   fi
-  printf 'url:%s' "${dep_urls[0]}"
+  if (( ${#dep_urls[@]} == 1 )); then
+    printf 'url:%s' "${dep_urls[0]}"
+    return 0
+  fi
+
+  local doc_branch_lines doc_branch
+  doc_branch_lines="$(extract_section "$body" "ドキュメントブランチ" || true)"
+  mapfile -t doc_branch < <(
+    printf '%s\n' "$doc_branch_lines" \
+      | sed -E 's/^[[:space:]]*[-#]+[[:space:]]*//; s/^[[:space:]]+//; s/[[:space:]]+$//' \
+      | sed '/^$/d'
+  )
+  if (( ${#doc_branch[@]} == 1 )); then
+    printf 'branch:%s' "${doc_branch[0]}"
+  fi
 }
 
 resolve_doc_target() {

@@ -141,5 +141,35 @@ class TestMappingPayload(unittest.TestCase):
         self.assertNotIn("epic", payload)
 
 
+class TestSubissueApiArgs(unittest.TestCase):
+    def test_subissue_api_uses_raw_field(self) -> None:
+        args = publish_chat_epic.build_subissue_api_args(
+            repo="org/repo", parent_number=10, sub_issue_id=123
+        )
+        self.assertIn("-F", args)
+        self.assertNotIn("-f", args)
+        self.assertIn("sub_issue_id=123", args)
+
+
+class TestRunWithRetries(unittest.TestCase):
+    def test_run_with_retries_retries_then_succeeds(self) -> None:
+        calls = []
+
+        def runner(cmd, check=True):  # type: ignore[no-untyped-def]
+            calls.append(cmd)
+            if len(calls) < 3:
+                raise RuntimeError("fail")
+            return "ok"
+
+        publish_chat_epic.run_with_retries(
+            ["echo", "ok"],
+            attempts=3,
+            wait_seconds=0,
+            run_fn=runner,
+            sleep_fn=lambda _: None,
+        )
+        self.assertEqual(len(calls), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

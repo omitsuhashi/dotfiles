@@ -7,16 +7,19 @@ import os
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 
 FENCE_RE = re.compile(r"^\s*(```|~~~)\s*([A-Za-z0-9_-]+)?\s*$")
 HEADING_RE = re.compile(r"^\s*#{1,6}\s+(.*\S)\s*$")
 ISSUE_URL_RE = re.compile(r"/issues/(\d+)(?:$|[/?#])")
 DEFAULT_EPIC_LABEL = "epic"
+DEFAULT_RETRY_ATTEMPTS = 3
+DEFAULT_RETRY_WAIT_SECONDS = 1.0
 
 
 @dataclass
@@ -76,6 +79,29 @@ def run(cmd: List[str], *, check: bool = True) -> str:
             f"STDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
         )
     return (p.stdout or "").strip()
+
+
+def run_with_retries(
+    cmd: List[str],
+    *,
+    attempts: int,
+    wait_seconds: float,
+    run_fn: Callable[[List[str], bool], str] = run,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    on_error: Optional[Callable[[int, Exception], None]] = None,
+) -> str:
+    last_error: Optional[Exception] = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return run_fn(cmd, check=True)
+        except Exception as exc:
+            last_error = exc
+            if on_error is not None:
+                on_error(attempt, exc)
+            if attempt < attempts and wait_seconds > 0:
+                sleep_fn(wait_seconds * attempt)
+    assert last_error is not None
+    raise last_error
 
 
 def ensure_gh_ready() -> None:
@@ -223,21 +249,60 @@ def gh_issue_get_id(*, repo: str, number: int) -> int:
     return int(out.strip())
 
 
-def gh_issue_add_subissue(*, repo: str, parent_number: int, sub_issue_id: int) -> None:
-    run(
-        [
-            "gh",
-            "api",
-            "-X",
-            "POST",
-            "-H",
-            "Accept: application/vnd.github+json",
-            "-H",
-            "X-GitHub-Api-Version: 2022-11-28",
-            f"repos/{repo}/issues/{parent_number}/sub_issues",
-            "-f",
-            f"sub_issue_id={sub_issue_id}",
-        ]
+def build_subissue_api_args(*, repo: str, parent_number: int, sub_issue_id: int) -> List[str]:
+    return [
+        "gh",
+        "api",
+        "-X",
+        "POST",
+        "-H",
+        "Accept: application/vnd.github+json",
+        "-H",
+        "X-GitHub-Api-Version: 2022-11-28",
+        f"repos/{repo}/issues/{parent_number}/sub_issues",
+        "-F",
+        f"sub_issue_id={sub_issue_id}",
+    ]
+
+
+def build_issue_edit_labels_args(*, repo: str, number: int, labels: List[str]) -> List[str]:
+    cmd = ["gh", "issue", "edit", str(number), "--repo", repo]
+    for lab in labels:
+        cmd += ["--add-label", lab]
+    return cmd
+
+
+def gh_issue_add_labels(
+    *,
+    repo: str,
+    number: int,
+    labels: List[str],
+    attempts: int = DEFAULT_RETRY_ATTEMPTS,
+    wait_seconds: float = DEFAULT_RETRY_WAIT_SECONDS,
+    on_error: Optional[Callable[[int, Exception], None]] = None,
+) -> None:
+    if not labels:
+        return
+    cmd = build_issue_edit_labels_args(repo=repo, number=number, labels=labels)
+    run_with_retries(
+        cmd, attempts=attempts, wait_seconds=wait_seconds, on_error=on_error
+    )
+
+
+def gh_issue_add_subissue(
+    *,
+    repo: str,
+    parent_number: int,
+    sub_issue_id: int,
+    attempts: int = DEFAULT_RETRY_ATTEMPTS,
+    wait_seconds: float = DEFAULT_RETRY_WAIT_SECONDS,
+    on_error: Optional[Callable[[int, Exception], None]] = None,
+) -> None:
+    cmd = build_subissue_api_args(
+        repo=repo, parent_number=parent_number, sub_issue_id=sub_issue_id
+    )
+    run_with_retries(
+        cmd, attempts=attempts, wait_seconds=wait_seconds, on_error=on_error
     )
 
 
@@ -272,12 +337,32 @@ def main() -> int:
 
     epic_records = []
     created_lines = []
+    label_failures = []
+    link_failures = []
     for group in groups:
         # 1) Create epic
         epic_labels = build_epic_labels(labels=list(args.label), epic_labels=list(args.epic_label))
         epic_num, epic_url = gh_issue_create(
             repo=repo, title=group.epic.title, body=group.epic.body, labels=epic_labels
         )
+        try:
+            gh_issue_add_labels(
+                repo=repo,
+                number=epic_num,
+                labels=epic_labels,
+                on_error=lambda attempt, exc: print(
+                    f"[WARN] Epic label retry #{epic_num} ({attempt}/{DEFAULT_RETRY_ATTEMPTS}): {exc}",
+                    file=sys.stderr,
+                ),
+            )
+        except Exception as exc:
+            label_failures.append(
+                {"epic_number": epic_num, "labels": list(epic_labels), "error": str(exc)}
+            )
+            print(
+                f"[WARN] Epic label failed for #{epic_num}: {exc}",
+                file=sys.stderr,
+            )
         created_lines.append(f"- Epic: #{epic_num} {epic_url}")
 
         created = []
@@ -285,7 +370,30 @@ def main() -> int:
         for b in group.subs:
             num, url = gh_issue_create(repo=repo, title=b.title, body=b.body, labels=list(args.label))
             sub_issue_id = gh_issue_get_id(repo=repo, number=num)
-            gh_issue_add_subissue(repo=repo, parent_number=epic_num, sub_issue_id=sub_issue_id)
+            try:
+                gh_issue_add_subissue(
+                    repo=repo,
+                    parent_number=epic_num,
+                    sub_issue_id=sub_issue_id,
+                    on_error=lambda attempt, exc, epic=epic_num, issue=num: print(
+                        f"[WARN] Sub-issue link retry epic #{epic} -> #{issue} "
+                        f"({attempt}/{DEFAULT_RETRY_ATTEMPTS}): {exc}",
+                        file=sys.stderr,
+                    ),
+                )
+            except Exception as exc:
+                link_failures.append(
+                    {
+                        "epic_number": epic_num,
+                        "sub_issue_number": num,
+                        "sub_issue_id": sub_issue_id,
+                        "error": str(exc),
+                    }
+                )
+                print(
+                    f"[WARN] Sub-issue link failed epic #{epic_num} -> #{num}: {exc}",
+                    file=sys.stderr,
+                )
             created.append(
                 {
                     "internal_index": b.internal_index,
@@ -328,6 +436,20 @@ def main() -> int:
     for line in created_lines:
         print(line)
     print(f"[OK] Mapping: {out_path}")
+    if label_failures or link_failures:
+        print("\n[WARN] Some operations failed. Retry commands:")
+        for item in label_failures:
+            labels = item["labels"]
+            labels_args = " ".join([f"--add-label {lab}" for lab in labels])
+            print(
+                f"  gh issue edit {item['epic_number']} --repo {repo} {labels_args}"
+            )
+        for item in link_failures:
+            print(
+                "  gh api -X POST "
+                f"repos/{repo}/issues/{item['epic_number']}/sub_issues "
+                f"-F sub_issue_id={item['sub_issue_id']}"
+            )
     return 0
 
 
