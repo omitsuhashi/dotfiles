@@ -1,6 +1,6 @@
 ---
 name: epic-subissue-runner
-description: Commit at least once per sub-issue; close issues when complete; stop on ambiguity.
+description: Use when running epic sub-issues where each sub-issue must be committed and closed, and ambiguity must halt progress.
 disable-model-invocation: true
 argument-hint: [epic-issue]
 allowed-tools: Read, Grep, Glob, Edit, Bash(git:*), Bash(gh:*), Bash(bash:*)
@@ -10,6 +10,7 @@ allowed-tools: Read, Grep, Glob, Edit, Bash(git:*), Bash(gh:*), Bash(bash:*)
 
 ## Epic本文で doc submodule の参照先を指定できる
 以下のどちらかで指定する（どちらも無い場合は pin しない＝現状の submodule commit のまま）。
+pin は worktree 準備時に反映される前提（このスキル内で worktree 操作はしない）。
 
 ### A) 明示（推奨）
 ```
@@ -28,6 +29,7 @@ allowed-tools: Read, Grep, Glob, Edit, Bash(git:*), Bash(gh:*), Bash(bash:*)
 
 ## 前提/ポリシー（ユーザー指定）
 - 起動時に **Epic用 worktree ブランチ** 上だけで作業する（sub-issueごとに別ブランチは作らない）
+- worktree は事前に用意済み（このスキルでは作成/削除/移動/切替を行わない）
 - sub-issue は **Issue本文（本文・チェックリスト・Acceptance Criteria）を唯一の仕様**として実行する（推測しない）
 - コミットは **最低でも sub-issue 完了時に1回** 必須（途中コミットは可）
 - sub-issue が完了したら **Issueのstatusを完了**にする（このスキルでは `gh issue close -r completed` を採用）
@@ -39,32 +41,25 @@ allowed-tools: Read, Grep, Glob, Edit, Bash(git:*), Bash(gh:*), Bash(bash:*)
 - `$ARGUMENTS`: Epic issue（番号/URL/owner-repo#N 等、`gh issue view` が解釈できる形式）
 
 ## 実行手順（必ずこの順序）
-0) **workspace/worktree を作成（必須）**
-   - どこから起動してもよい（skill が worktree を用意する）
-   - worktree 生成（stdout = worktree path）:
-     - `WORKTREE_DIR="$(bash "$HOME/.codex/skills/epic-subissue-runner/scripts/ensure_epic_worktree.sh" "$ARGUMENTS")"`
-   - このスクリプトは必要なら **doc submodule を Epic本文に従って pin** し、親repoでコミットまで行う
-   - 以降の作業は **必ず `cd "$WORKTREE_DIR"`** して行う（Read/Edit/Glob も含む）
+0) **サブモジュールを同期（必須）**
+   - `git submodule sync --recursive`
+   - `git submodule update --init --recursive`
 
-1) **作業場所を検証（必須）**
-   - `bash "$HOME/.codex/skills/epic-subissue-runner/scripts/assert_worktree.sh" --dir "$WORKTREE_DIR"`
-   - default branch 上なら停止（依頼者に確認してもらう）
-
-2) **epicで全体像を把握**
+1) **epicで全体像を把握**
    - 指定したepic本文から全体像を把握する
 
-3) **sub-issue 一覧を抽出**
+2) **sub-issue 一覧を抽出**
    - `bash "$HOME/.codex/skills/epic-subissue-runner/scripts/list_subissues.sh" "$ARGUMENTS"` を実行
    - Sub-issues API を最優先で取得し、0件/失敗時のみ Epic本文の `- [ ]` タスク行から抽出（`- [x]` はスキップ）
 
-4) **sub-issue を順に処理（各件で必須）**
-   - まず `cd "$WORKTREE_DIR"`（以降の作業ディレクトリは固定）
+3) **sub-issue を順に処理（各件で必須）**
+   - 作業ディレクトリは現在の worktree 固定（このスキルでの `cd` はしない）
    - `gh issue view <sub>` で本文を読み、本文に従って実装する
    - 曖昧/衝突/不足（例：期待I/O不明、影響範囲が複数解釈、手順が矛盾）なら **即停止して依頼者に確認**
    - 実装中の途中コミットは任意。ただし **完了時には最低1コミット** 必須
      - もし「変更が不要」なら `git commit --allow-empty` を使って “完了記録” を残す
    - 完了前ゲート
-     - `bash "$HOME/.codex/skills/epic-subissue-runner/scripts/run_issue_gates.sh" --dir "$WORKTREE_DIR"`
+     - `bash "$HOME/.codex/skills/epic-subissue-runner/scripts/run_issue_gates.sh"`
      - 失敗したら停止（修正 or 依頼者確認）
      - 成功したら その後に commit
    - 完了したらPRを作成
@@ -73,3 +68,4 @@ allowed-tools: Read, Grep, Glob, Edit, Bash(git:*), Bash(gh:*), Bash(bash:*)
 - Issue本文にない仕様の追加・自己判断での要件補完
 - 依頼者確認が必要な曖昧点を抱えたままの続行
 - epicを閉じたり、statusを完了にしたりしないこと
+- worktree の作成/削除/移動/切替

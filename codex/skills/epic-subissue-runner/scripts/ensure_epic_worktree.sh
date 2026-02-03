@@ -15,6 +15,7 @@ this epic branch.
 ENV (optional):
   CODEX_WORKSPACE_ROOT=<dir>   # default: $HOME/repos/the3 if exists, else $HOME/repos, else $HOME/work
   WT_ROOT=<dir>                # default: $CODEX_WORKSPACE_ROOT/wt
+  DOC_EPIC_BRANCH_PATTERNS     # default: "epic/%N,%N-epic-*,%N-*"
 USAGE
 }
 
@@ -104,6 +105,43 @@ resolve_doc_target() {
   echo "branch $pin"
 }
 
+resolve_doc_branch_for_issue() {
+  local doc_dir="$1"
+  local issue_num="$2"
+  local patterns="${DOC_EPIC_BRANCH_PATTERNS:-"epic/%N,%N-epic-*,%N-*"}"
+
+  local IFS=',' pat
+  local pat_list=()
+  read -r -a pat_list <<< "$patterns"
+
+  local branches=()
+  mapfile -t branches < <(
+    git -C "$doc_dir" for-each-ref --format='%(refname:short)' refs/remotes/origin \
+      | sed 's#^origin/##'
+  )
+
+  for pat in "${pat_list[@]}"; do
+    [[ -n "$pat" ]] || continue
+    local glob="${pat//%N/$issue_num}"
+    local matches=()
+    local b
+    for b in "${branches[@]}"; do
+      if [[ "$b" == $glob ]]; then
+        matches+=("$b")
+      fi
+    done
+    if (( ${#matches[@]} == 1 )); then
+      printf '%s' "${matches[0]}"
+      return 0
+    fi
+    if (( ${#matches[@]} > 1 )); then
+      die "multiple doc branches match issue#$issue_num pattern '$glob'; use doc=branch:<name>"
+    fi
+  done
+
+  die "doc branch not found for issue#$issue_num; set doc=branch:<name> or DOC_EPIC_BRANCH_PATTERNS"
+}
+
 pin_doc_submodule_from_epic() {
   local wt_dir="$1"
   local epic_ref="$2"
@@ -143,10 +181,9 @@ pin_doc_submodule_from_epic() {
   local target_sha desc
   case "$kind" in
     issue)
-      local branch="epic/$value"
-      if ! git -C "$doc_dir" fetch origin "$branch" >/dev/null 2>&1; then
-        die "doc branch not found on origin: $branch (create it on GitHub first)"
-      fi
+      local branch
+      branch="$(resolve_doc_branch_for_issue "$doc_dir" "$value")"
+      git -C "$doc_dir" fetch origin "$branch" >/dev/null 2>&1
       target_sha="$(git -C "$doc_dir" rev-parse FETCH_HEAD)"
       desc="issue#$value($branch)"
       ;;

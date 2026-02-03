@@ -97,13 +97,39 @@ export CODEX_PROFILE=sandbox
 gtr() {
   local branch="$1"; shift || true
   local wt gitdir_abs common_abs
-  wt="$(git gtr go "$branch")" || return 1
+  if [[ -z "$branch" ]]; then
+    echo "usage: gtr <branch> [-- codex-args...]" >&2
+    return 2
+  fi
+
+  wt="$(git gtr go "$branch" 2>/dev/null)" || {
+    git gtr new "$branch" --yes || return 1
+    wt="$(git gtr go "$branch")" || return 1
+  }
+
+  if [[ "$branch" =~ ^epic/([0-9]+)$ ]] \
+    && [[ -x "$HOME/.codex/skills/epic-subissue-runner/scripts/ensure_epic_worktree.sh" ]]; then
+    local epic_num="${BASH_REMATCH[1]}"
+    local remote repo_full epic_ref
+    remote="$(git -C "$wt" remote get-url origin 2>/dev/null || true)"
+    if [[ -n "$remote" ]]; then
+      repo_full="$(printf '%s' "$remote" | sed -E 's#^(https?://github\.com/|git@github\.com:)##; s#\.git$##; s#^([^/]+/[^/]+).*$#\1#')"
+    fi
+    if [[ -n "${repo_full:-}" ]]; then
+      epic_ref="${repo_full}#${epic_num}"
+    else
+      epic_ref="${epic_num}"
+    fi
+    bash "$HOME/.codex/skills/epic-subissue-runner/scripts/ensure_epic_worktree.sh" "$epic_ref" >/dev/null || return 1
+    wt="$(git gtr go "$branch")" || return 1
+  fi
 
   gitdir_abs="$(cd "$wt" && cd "$(git rev-parse --git-dir)" && pwd -P)" || return 1
   common_abs="$(cd "$wt" && cd "$(git rev-parse --git-common-dir)" && pwd -P)" || return 1
 
   git gtr ai "$branch" --ai codex -- \
     --sandbox workspace-write \
+    --add-dir "$wt" \
     --add-dir "$gitdir_abs" \
     --add-dir "$common_abs" \
     "$@"
