@@ -6,13 +6,13 @@
 /auth.json
 /internal_storage.json
 /models_cache.json
-/skills/.system/
 /.issue-importer/
-/docs/plans/
+docs/plans/
 /shell_snapshots/
-/skills/security-*
 /.codex-global-state.json
 /sqlite/codex-dev.db
 /vendor_imports/skills-curated-cache.json
 /.personality_migration
-/skills/*/docs/plans/
+/archived_sessions/
+/skills/
+!/skills/epic-subissue-runner/
