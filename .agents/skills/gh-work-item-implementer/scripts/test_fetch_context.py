@@ -1,3 +1,7 @@
+import contextlib
+import io
+import json
+import tempfile
 import unittest
 from unittest import mock
 
@@ -55,6 +59,58 @@ class FetchSubIssuesRepoResolutionTests(unittest.TestCase):
             ],
         )
         self.assertEqual(len(result), 2)
+
+
+class MainModeScopeFilteringTests(unittest.TestCase):
+    def test_open_scope_recomputes_mode_after_filtering_closed_sub_issues(self):
+        issue = {
+            "owner": "acme",
+            "repo": "main",
+            "issue_number": 10,
+            "url": "https://github.com/acme/main/issues/10",
+            "title": "Target",
+            "state": "open",
+            "labels": [],
+            "milestone": None,
+            "assignees": [],
+            "body": "",
+        }
+        closed_sub_issue = {
+            "owner": "acme",
+            "repo": "main",
+            "issue_number": 11,
+            "url": "https://github.com/acme/main/issues/11",
+            "title": "Closed child",
+            "state": "closed",
+            "labels": [],
+            "milestone": None,
+            "assignees": [],
+            "body": "",
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            argv = ["fetch_context.py", "acme/main#10", "--context-dir", tmpdir]
+            with (
+                mock.patch("sys.argv", argv),
+                mock.patch.object(fetch_context, "fetch_issue", return_value=issue),
+                mock.patch.object(fetch_context, "fetch_parent", return_value=None),
+                mock.patch.object(fetch_context, "fetch_sub_issues", return_value=[closed_sub_issue]),
+                mock.patch.object(
+                    fetch_context,
+                    "fetch_dependencies",
+                    return_value={"blocked_by": [], "blocking": []},
+                ),
+                mock.patch.object(fetch_context, "heuristic_neighbors", return_value=[]),
+                contextlib.redirect_stdout(io.StringIO()) as stdout,
+            ):
+                fetch_context.main()
+
+            output_path = stdout.getvalue().strip()
+            with open(output_path, "r", encoding="utf-8") as fp:
+                payload = json.load(fp)
+
+        self.assertEqual(payload["sub_issues"], [])
+        self.assertEqual(payload["mode"], "issue")
 
 
 if __name__ == "__main__":
