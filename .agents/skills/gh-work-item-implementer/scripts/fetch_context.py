@@ -99,14 +99,7 @@ def parse_target(raw: str) -> Tuple[Optional[Tuple[str, str]], int]:
 
 def _is_not_found(stderr: str) -> bool:
     normalized = stderr.lower()
-    tokens = [
-        "http 404",
-        "http 410",
-        "not found",
-        "gone",
-        "resource not accessible",
-    ]
-    return any(token in normalized for token in tokens)
+    return bool(re.search(r"\b(?:http|status(?: code)?)\D*(404|410)\b", normalized))
 
 
 def gh_api_json(
@@ -241,16 +234,18 @@ def fetch_sub_issues(owner: str, repo: str, number: int) -> List[Dict[str, Any]]
     if not isinstance(raw, list):
         return []
 
-    numbers: List[int] = []
+    issue_targets: List[Tuple[str, str, int]] = []
     seen = set()
     for item in raw:
         if isinstance(item, dict) and "number" in item:
             candidate = int(item["number"])
-            if candidate not in seen:
-                seen.add(candidate)
-                numbers.append(candidate)
+            item_owner, item_repo = _parse_owner_repo_from_api_urls(owner, repo, item)
+            key = (item_owner, item_repo, candidate)
+            if key not in seen:
+                seen.add(key)
+                issue_targets.append(key)
 
-    return [fetch_issue(owner, repo, n) for n in numbers]
+    return [fetch_issue(item_owner, item_repo, n) for item_owner, item_repo, n in issue_targets]
 
 
 def fetch_parent(owner: str, repo: str, number: int) -> Optional[Dict[str, Any]]:
