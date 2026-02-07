@@ -14,7 +14,7 @@ Accept exactly one target:
 Optional flags in the same line:
 - `mode=auto|epic|issue` (default `auto`)
 - `scope=open|all` (default `open`)
-- `commit=per-sub-issue|single` (default `per-sub-issue`)
+- `commit=per-issue|fine-grained` (default `per-issue`)
 - `context_dir=<path>` (default `./.work-items`)
 
 ## Must Produce (Artifacts)
@@ -37,13 +37,17 @@ Optional flags in the same line:
 - Implement each open sub-issue in the order returned by the Sub-issues API.
 - If dependency edges exist among sub-issues, process `blocked_by` before `blocking`.
 - Commit strategy:
-  - `per-sub-issue`: one commit per sub-issue (default)
-  - `single`: one commit for all sub-issues
+  - `per-issue`: at least one commit per sub-issue (default)
+  - `fine-grained`: split within each sub-issue into multiple coherent commits when safer/reviewable
+  - Never combine multiple sub-issues into a single commit.
 
 ### Issue Mode
 - If parent exists, read parent + siblings + dependencies before coding.
 - Implement only target issue scope.
 - Do not conflict with epic plan and sibling responsibilities.
+- Commit strategy:
+  - `per-issue`: at least one commit for the target issue (default)
+  - `fine-grained`: split the issue into multiple coherent commits when changes span independent concerns
 
 ### Standalone Bug
 - Parent may be null.
