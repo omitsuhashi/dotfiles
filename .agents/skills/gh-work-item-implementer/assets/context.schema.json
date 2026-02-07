@@ -1,0 +1,117 @@
+{
+  "type": "object",
+  "required": [
+    "target",
+    "mode",
+    "issue",
+    "parent",
+    "sub_issues",
+    "siblings",
+    "dependencies",
+    "related"
+  ],
+  "properties": {
+    "target": {
+      "type": "object",
+      "required": ["raw", "owner", "repo", "issue_number", "url"],
+      "properties": {
+        "raw": { "type": "string" },
+        "owner": { "type": "string" },
+        "repo": { "type": "string" },
+        "issue_number": { "type": "integer" },
+        "url": { "type": "string" }
+      }
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["epic", "issue"]
+    },
+    "issue": {
+      "$ref": "#/$defs/issue"
+    },
+    "parent": {
+      "anyOf": [{ "$ref": "#/$defs/issue" }, { "type": "null" }]
+    },
+    "sub_issues": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issue" }
+    },
+    "siblings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issue" }
+    },
+    "dependencies": {
+      "type": "object",
+      "required": ["blocked_by", "blocking"],
+      "properties": {
+        "blocked_by": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issueRef" }
+        },
+        "blocking": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issueRef" }
+        }
+      }
+    },
+    "related": {
+      "type": "object",
+      "required": ["heuristic_neighbors"],
+      "properties": {
+        "heuristic_neighbors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issueRef" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "issueRef": {
+      "type": "object",
+      "required": ["owner", "repo", "issue_number", "url", "title", "state"],
+      "properties": {
+        "owner": { "type": "string" },
+        "repo": { "type": "string" },
+        "issue_number": { "type": "integer" },
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "state": { "type": "string" }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "required": [
+        "owner",
+        "repo",
+        "issue_number",
+        "url",
+        "title",
+        "state",
+        "labels",
+        "milestone",
+        "assignees",
+        "body"
+      ],
+      "properties": {
+        "owner": { "type": "string" },
+        "repo": { "type": "string" },
+        "issue_number": { "type": "integer" },
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "state": { "type": "string" },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "milestone": {
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "assignees": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "body": { "type": "string" }
+      }
+    }
+  }
+}
