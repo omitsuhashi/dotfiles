@@ -12,3 +12,4 @@
 # GitHub Copilot persisted chat sessions
 /copilot/chatSessions
 /git_toolbox*
+/inspectionProfiles/*.xml
