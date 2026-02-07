@@ -383,10 +383,10 @@ def main() -> None:
     issue = fetch_issue(owner, repo, issue_number)
     parent = fetch_parent(owner, repo, issue_number)
     sub_issues = fetch_sub_issues(owner, repo, issue_number)
+    mode = "epic" if sub_issues else "issue"
 
     if args.scope == "open":
         sub_issues = [entry for entry in sub_issues if entry.get("state") != "closed"]
-    mode = "epic" if sub_issues else "issue"
 
     siblings: List[Dict[str, Any]] = []
     if parent is not None:

@@ -62,7 +62,7 @@ class FetchSubIssuesRepoResolutionTests(unittest.TestCase):
 
 
 class MainModeScopeFilteringTests(unittest.TestCase):
-    def test_open_scope_recomputes_mode_after_filtering_closed_sub_issues(self):
+    def test_open_scope_preserves_epic_mode_when_all_sub_issues_are_closed(self):
         issue = {
             "owner": "acme",
             "repo": "main",
@@ -110,7 +110,7 @@ class MainModeScopeFilteringTests(unittest.TestCase):
                 payload = json.load(fp)
 
         self.assertEqual(payload["sub_issues"], [])
-        self.assertEqual(payload["mode"], "issue")
+        self.assertEqual(payload["mode"], "epic")
 
 
 if __name__ == "__main__":
