@@ -1,4 +1,4 @@
 interface:
   display_name: "Review Fix Loop"
   short_description: "Help with Review Fix Loop tasks"
-  default_prompt: "Use $review-fix-loop to run review-fix-review loops until there are zero actionable findings."
+  default_prompt: "Use $review-fix-loop with $requesting-code-review and $receiving-code-review until review findings are zero."

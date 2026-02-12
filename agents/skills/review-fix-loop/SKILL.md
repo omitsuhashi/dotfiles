@@ -10,9 +10,21 @@ description: Use when the user asks to repeatedly run code review and apply fixe
 Run a strict "review -> fix -> re-review" cycle without stopping after the first pass.
 Continue until no actionable findings remain or a hard stop condition is met.
 
-**REQUIRED SUB-SKILL:** Use `superpowers:requesting-code-review` to run each review pass.
-**REQUIRED SUB-SKILL:** Use `superpowers:receiving-code-review` to evaluate and apply feedback rigorously.
+**REQUIRED SUB-SKILL:** Use `$requesting-code-review` to run each review pass.
+**REQUIRED SUB-SKILL:** Use `$receiving-code-review` to evaluate and apply feedback rigorously.
 **REQUIRED SUB-SKILL:** Use `superpowers:verification-before-completion` before claiming completion.
+
+## Sub-Skill Contract
+
+For every loop round, apply both skills explicitly:
+
+1. Review acquisition must follow `$requesting-code-review`.
+   - Get SHAs (`BASE_SHA`, `HEAD_SHA`).
+   - Request review using the `requesting-code-review/code-reviewer.md` template format.
+2. Feedback handling and fixes must follow `$receiving-code-review`.
+   - Use the full sequence: `READ -> UNDERSTAND -> VERIFY -> EVALUATE -> RESPOND -> IMPLEMENT`.
+   - Do not apply suggestions blindly.
+   - If any feedback item is unclear, stop and clarify before implementation.
 
 ## Defaults
 
@@ -29,7 +41,7 @@ Use these defaults unless the user overrides them:
    - Determine review range (`BASE_SHA` -> current `HEAD_SHA`).
    - Capture acceptance requirements (issue, plan, or explicit user request).
 2. Run review round `N`.
-   - Dispatch code review for the current range.
+   - Run `$requesting-code-review` for the current range.
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
@@ -39,6 +51,7 @@ Use these defaults unless the user overrides them:
    - If checklist has findings: continue to fix phase.
 4. Fix findings one-by-one.
    - Start from highest severity.
+   - Handle each finding with `$receiving-code-review` rules before changing code.
    - For each item: implement minimal safe fix, then run relevant tests/lint.
    - Do not batch unrelated fixes into one large speculative refactor.
 5. Re-verify implementation quality.
@@ -89,3 +102,4 @@ Round N/5
 - "レビューして、指摘ゼロまで直し続けて"
 - "Keep reviewing and fixing until clean"
 - "Pre-merge quality gate: no review findings allowed"
+- "$requesting-code-review と $receiving-code-review を使って、指摘ゼロまで繰り返して"
