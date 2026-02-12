@@ -2,10 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/codex/superpowers" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/codex/vendor_imports/skills" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/codex/worktrees/2690/gmen" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/codex/worktrees/a13c/workflows" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/codex/worktrees/b0b2/server" vcs="Git" />
   </component>
 </project>
