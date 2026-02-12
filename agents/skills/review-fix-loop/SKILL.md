@@ -10,7 +10,6 @@ description: Use when the user asks to repeatedly run code review and apply fixe
 Run a strict "review -> fix -> re-review" cycle without stopping after the first pass.
 Continue until no actionable findings remain or a hard stop condition is met.
 
-**REQUIRED REVIEW COMMAND:** Run `/review` explicitly in every review round.
 **REQUIRED SUB-SKILL:** Use `$requesting-code-review` to run each review pass.
 **REQUIRED SUB-SKILL:** Use `$receiving-code-review` to evaluate and apply feedback rigorously.
 **REQUIRED SUB-SKILL:** Use `superpowers:verification-before-completion` before claiming completion.
@@ -21,7 +20,7 @@ For every loop round, apply both skills explicitly:
 
 1. Review acquisition must follow `$requesting-code-review`.
    - Get SHAs (`BASE_SHA`, `HEAD_SHA`).
-   - Request review by running `/review` explicitly using the `$requesting-code-review` template (`code-reviewer.md` in that skill).
+   - Request review using the `$requesting-code-review` template (`code-reviewer.md` in that skill).
 2. Feedback handling and fixes must follow `$receiving-code-review`.
    - Use the full sequence: `READ -> UNDERSTAND -> VERIFY -> EVALUATE -> RESPOND -> IMPLEMENT`.
    - Do not apply suggestions blindly.
@@ -47,7 +46,6 @@ Use these defaults unless the user overrides them:
    - Capture acceptance requirements (issue, plan, or explicit user request).
 2. Run review round `N`.
    - Run `$requesting-code-review` for the current branch range (`BASE_SHA` -> `HEAD_SHA`).
-   - Invoke `/review` explicitly for that branch diff context (include `comparison_branch`, `BASE_SHA`, `HEAD_SHA`, and requirement context in the review request).
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
@@ -95,7 +93,6 @@ When stopping with unresolved findings, report:
 - Re-review must be branch-based against `comparison_branch`, not per-commit-only.
 - Re-review is mandatory after each committed fix round until findings are zero or another Stop Condition is met.
 - Review the committed branch state against `comparison_branch` each round.
-- Every review round must include an explicit `/review` invocation (no implicit-only review round).
 - Use the current existing worktree throughout; worktree recreation is out of scope.
 - Never declare "done" without a final clean review pass and verification evidence.
 
@@ -106,7 +103,6 @@ Use this compact structure every round:
 ```markdown
 Round N/5
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Review command: /review (explicitly executed)
 - Fix commit: <hash/none>
 - Worktree: existing worktree (no recreation)
 - Findings: Critical=<n>, Important=<n>, Minor=<n>
