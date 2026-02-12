@@ -7,22 +7,33 @@ description: Use when the user asks to repeatedly run code review and apply fixe
 
 ## Overview
 
-Run a strict "slash command `/review` -> fix -> slash command `/review`" cycle without stopping after the first pass.
+Run a strict "review -> fix -> review" cycle without stopping after the first pass.
 Continue until no actionable findings remain or a hard stop condition is met.
-In this skill, `/review` always refers to a slash command (not a filesystem path).
+In Codex runtime, the primary review path is `codex review --base <branch>`.
 
-**REQUIRED SUB-SKILL:** Use `$requesting-code-review` to run each review pass.
+**REQUIRED SUB-SKILL:** Use `$requesting-code-review` for review rubric/context quality.
 **REQUIRED SUB-SKILL:** Use `$receiving-code-review` to evaluate and apply feedback rigorously.
 **REQUIRED SUB-SKILL:** Use `superpowers:verification-before-completion` before claiming completion.
+**PRECEDENCE RULE:** If this skill conflicts with `$requesting-code-review` on invocation mechanics, this skill wins.
 
 ## Review Invocation Contract
 
-Each round MUST use the explicit slash command `/review` as the primary review path.
+Choose review method once at Round 1 and keep it fixed for the entire loop.
+Do not improvise per round.
 
-- Use the filled template at `requesting-code-review/code-reviewer.md`.
-- Include `{WHAT_WAS_IMPLEMENTED}`, `{PLAN_OR_REQUIREMENTS}`, `{BASE_SHA}`, `{HEAD_SHA}`, `{DESCRIPTION}`.
-- If slash commands are unavailable in the runtime, fallback to Task tool with `superpowers:code-reviewer`.
-- Do not replace the slash command `/review` with ad-hoc self-review summaries.
+### Method Priority (deterministic)
+
+1. If `codex` CLI is available, use `codex review --base origin/<comparison_branch>`.
+2. Else if slash command `/review` is available, use `/review` with the filled `requesting-code-review/code-reviewer.md` template.
+3. Else use Task fallback with `superpowers:code-reviewer` and the same template.
+
+### Codex Route Rules (strict)
+
+- Command per round: `codex review --base origin/<comparison_branch> | tee /tmp/review_round<N>_output.txt`
+- Allowed with `--base`: no prompt argument and no stdin prompt (`-`).
+- Forbidden combination: `codex review --base ... -` or any `[PROMPT]` with `--base` (this errors).
+- Do not run `codex review --help` during loop rounds; treat this contract as fixed.
+- If you want template context for traceability, save it as artifact only (do not feed it to `codex review --base`).
 
 ## Sub-Skill Contract
 
@@ -30,8 +41,9 @@ For every loop round, apply both skills explicitly:
 
 1. Review acquisition must follow `$requesting-code-review`.
    - Get SHAs (`BASE_SHA`, `HEAD_SHA`).
-   - Run the slash command `/review` explicitly using the `$requesting-code-review` template (`code-reviewer.md` in that skill).
-   - If the slash command `/review` is unavailable, run Task fallback with `superpowers:code-reviewer` and the same filled template.
+   - In Codex runtime, run `codex review --base origin/<comparison_branch>` and save output artifact for the round.
+   - Use `requesting-code-review/code-reviewer.md` as checklist context artifact when needed, but do not pass it as prompt with `--base`.
+   - Outside Codex runtime, follow `/review` -> Task fallback order with the same template.
 2. Feedback handling and fixes must follow `$receiving-code-review`.
    - Use the full sequence: `READ -> UNDERSTAND -> VERIFY -> EVALUATE -> RESPOND -> IMPLEMENT`.
    - Do not apply suggestions blindly.
@@ -52,12 +64,13 @@ Use these defaults unless the user overrides them:
 
 1. Prepare loop context.
    - Determine `comparison_branch` (default `main`; user may override).
+   - Pin `review_method` once using Method Priority above. Do not switch method mid-loop unless the selected method is unavailable due hard runtime failure.
    - Resolve `BASE_SHA` from comparison target (recommended: `git merge-base origin/<comparison_branch> HEAD`).
    - Set current `HEAD_SHA` (`git rev-parse HEAD`).
    - Capture acceptance requirements (issue, plan, or explicit user request).
 2. Run review round `N`.
-   - Run `$requesting-code-review` for the current branch range (`BASE_SHA` -> `HEAD_SHA`).
-   - Use the slash command `/review` as first choice; only use Task fallback when slash commands are unavailable.
+   - Run the pinned `review_method` for the current branch range (`BASE_SHA` -> `HEAD_SHA`).
+   - For Codex route, run exactly: `codex review --base origin/<comparison_branch> | tee /tmp/review_round<N>_output.txt`.
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
@@ -107,9 +120,10 @@ When stopping with unresolved findings, report:
 - Re-review is mandatory after each committed fix round until findings are zero or another Stop Condition is met.
 - Review the committed branch state against `comparison_branch` each round.
 - Use the current existing worktree throughout; worktree recreation is out of scope.
-- Every review round must record review method (slash command `/review` or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
+- Every review round must record review method (`codex review --base`, slash `/review`, or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
 - Every review round must output the concrete finding list; summary counts alone are not acceptable.
 - If a round has zero findings, output `Findings detail: none` explicitly.
+- In Codex route, every round must retain reviewer artifact log at `/tmp/review_round<N>_output.txt`.
 - Never declare "done" without a final clean review pass and verification evidence.
 
 ## Round Report Format
@@ -119,7 +133,8 @@ Use this compact structure every round:
 ```markdown
 Round N/5
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Review method: <slash command `/review` | Task(superpowers:code-reviewer)>
+- Review method: <`codex review --base origin/<comparison_branch>` | slash command `/review` | Task(superpowers:code-reviewer)>
+- Reviewer artifact: </tmp/review_round<N>_output.txt | n/a>
 - Fix commit: <hash/none>
 - Worktree: existing worktree (no recreation)
 - Findings: Critical=<n>, Important=<n>, Minor=<n>
@@ -138,7 +153,8 @@ When the loop exits because findings are zero, include this evidence block in th
 Final Clean Evidence
 - Clean round: <Round N>
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Review method: <slash command `/review` | Task(superpowers:code-reviewer)>
+- Review method: <`codex review --base origin/<comparison_branch>` | slash command `/review` | Task(superpowers:code-reviewer)>
+- Reviewer artifact: </tmp/review_round<N>_output.txt | n/a>
 - Reviewer evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
 - Normalized checklist: [] (0 items)
 - Verification run: <commands>
