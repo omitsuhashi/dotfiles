@@ -14,7 +14,7 @@ Accept exactly one target:
 Optional flags in the same line:
 - `mode=auto|epic|issue` (default `auto`)
 - `scope=open|all` (default `open`)
-- `commit=per-issue|fine-grained` (default `per-issue`)
+- `commit=per-issue|fine-grained` (default `per-issue`; both enforce at least one commit per issue)
 - `context_dir=<path>` (default `./.work-items`)
 
 ## Must Produce (Artifacts)
@@ -39,7 +39,7 @@ Optional flags in the same line:
 - After each sub-issue reaches DoD and tests are green, close that sub-issue via `gh issue close`.
 - Commit strategy:
   - `per-issue`: at least one commit per sub-issue (default)
-  - `fine-grained`: split within each sub-issue into multiple coherent commits when safer/reviewable
+  - `fine-grained`: still at least one commit per sub-issue, and split into multiple coherent commits when safer/reviewable
   - Never combine multiple sub-issues into a single commit.
 
 ### Issue Mode
@@ -49,7 +49,12 @@ Optional flags in the same line:
 - If the target is a sub-issue and is completed, close it via `gh issue close`.
 - Commit strategy:
   - `per-issue`: at least one commit for the target issue (default)
-  - `fine-grained`: split the issue into multiple coherent commits when changes span independent concerns
+  - `fine-grained`: still at least one commit for the target issue, and split into multiple coherent commits when changes span independent concerns
+
+### Commit Invariant (All Modes)
+- Minimum requirement: at least one commit per completed issue/sub-issue in this task.
+- `fine-grained` allows extra commits within one issue, but does not relax the per-issue minimum.
+- A single commit must not mix changes from multiple issues/sub-issues.
 
 ### Standalone Bug
 - Parent may be null.
