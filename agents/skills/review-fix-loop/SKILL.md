@@ -30,18 +30,22 @@ For every loop round, apply both skills explicitly:
 
 Use these defaults unless the user overrides them:
 
+- `comparison_branch`: `main` (override allowed, e.g. `release/2026-q1`)
 - `max_rounds`: 10
 - `severity_scope`: all findings (`Critical`, `Important`, `Minor`)
 - `stop_on_repeated_findings`: stop when the same unresolved finding repeats for 2 consecutive rounds
+- `commit_after_fix`: required (create a commit after each completed fix phase that has changes)
 - `autonomy`: continue looping without asking after each round; ask only for blockers/ambiguity
 
 ## Loop Workflow
 
 1. Prepare loop context.
-   - Determine review range (`BASE_SHA` -> current `HEAD_SHA`).
+   - Determine `comparison_branch` (default `main`; user may override).
+   - Resolve `BASE_SHA` from comparison target (recommended: `git merge-base origin/<comparison_branch> HEAD`).
+   - Set current `HEAD_SHA` (`git rev-parse HEAD`).
    - Capture acceptance requirements (issue, plan, or explicit user request).
 2. Run review round `N`.
-   - Run `$requesting-code-review` for the current range.
+   - Run `$requesting-code-review` for the current branch range (`BASE_SHA` -> `HEAD_SHA`).
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
@@ -57,9 +61,13 @@ Use these defaults unless the user overrides them:
 5. Re-verify implementation quality.
    - Run repository-relevant checks before next review round.
    - If checks fail, fix failures before re-review.
-6. Repeat.
-   - Recompute `HEAD_SHA`.
-   - Start next round until completion or stop condition.
+6. Commit validated fixes.
+   - If changes exist and checks pass, create a commit for this round (required).
+   - Continue in the same existing worktree; do not recreate or switch worktrees as part of this loop.
+7. Run next review round.
+   - Recompute `HEAD_SHA` from the new commit and refresh branch diff context from `comparison_branch`.
+   - Execute the next review round unconditionally.
+   - Exit only when a Stop Condition is met.
 
 ## Stop Conditions
 
@@ -81,6 +89,11 @@ When stopping with unresolved findings, report:
 - Keep changes review-driven and minimal; avoid opportunistic rewrites.
 - Preserve existing behavior unless a finding explicitly requires behavior change.
 - Run tests after each fix set and again before each re-review.
+- Each completed fix phase must end with a commit when changes exist.
+- Re-review must be branch-based against `comparison_branch`, not per-commit-only.
+- Re-review is mandatory after each committed fix round until findings are zero or another Stop Condition is met.
+- Review the committed branch state against `comparison_branch` each round.
+- Use the current existing worktree throughout; worktree recreation is out of scope.
 - Never declare "done" without a final clean review pass and verification evidence.
 
 ## Round Report Format
@@ -90,6 +103,8 @@ Use this compact structure every round:
 ```markdown
 Round N/5
 - Review range: <BASE_SHA>..<HEAD_SHA>
+- Fix commit: <hash/none>
+- Worktree: existing worktree (no recreation)
 - Findings: Critical=<n>, Important=<n>, Minor=<n>
 - Fixed in this round: <ID list>
 - Verification run: <commands>

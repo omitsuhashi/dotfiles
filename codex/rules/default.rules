@@ -153,3 +153,4 @@ prefix_rule(pattern=["~/.codex/superpowers/.codex/superpowers-codex", "use-skill
 prefix_rule(pattern=["/Users/omitsuhashi/.codex/skills/epic-subissue-runner/scripts/list_subissues.sh", "https://github.com/omitsuhashi/smartra/issues/817"], decision="allow")
 prefix_rule(pattern=["go", "test", "./scripts/dev/dev-seed-mock", "-run", "Weights"], decision="allow")
 prefix_rule(pattern=["bash", "/Users/omitsuhashi/.codex/skills/epic-subissue-runner/scripts/run_issue_gates.sh"], decision="allow")
+prefix_rule(pattern=["uv", "run", "python", "-m", "unittest"], decision="allow")
