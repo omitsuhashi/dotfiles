@@ -61,8 +61,9 @@ Use these defaults unless the user overrides them:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
      - `R<N>-M#` for Minor
+   - Publish the round report with per-finding detail (ID, severity, location, summary, status). Do not output counts only.
 3. Decide continuation.
-   - If checklist is empty: go to final verification and finish.
+   - If checklist is empty: still publish this round report with `Findings detail: none` and then go to final verification.
    - If checklist has findings: continue to fix phase.
 4. Fix findings one-by-one.
    - Start from highest severity.
@@ -106,6 +107,8 @@ When stopping with unresolved findings, report:
 - Review the committed branch state against `comparison_branch` each round.
 - Use the current existing worktree throughout; worktree recreation is out of scope.
 - Every review round must record review method (`/review` or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
+- Every review round must output the concrete finding list; summary counts alone are not acceptable.
+- If a round has zero findings, output `Findings detail: none` explicitly.
 - Never declare "done" without a final clean review pass and verification evidence.
 
 ## Round Report Format
@@ -119,11 +122,32 @@ Round N/5
 - Fix commit: <hash/none>
 - Worktree: existing worktree (no recreation)
 - Findings: Critical=<n>, Important=<n>, Minor=<n>
+- Findings detail: <for each finding -> ID | severity | location | summary | status(open/fixed/deferred); use `none` when empty>
 - Fixed in this round: <ID list>
 - Verification run: <commands>
 - Verification result: <pass/fail + short reason>
 - Continue?: <yes/no + reason>
 ```
+
+## Final Clean Evidence (Required)
+
+When the loop exits because findings are zero, include this evidence block in the final response:
+
+```markdown
+Final Clean Evidence
+- Clean round: <Round N>
+- Review range: <BASE_SHA>..<HEAD_SHA>
+- Review method: <slash command /review | Task(superpowers:code-reviewer)>
+- Reviewer evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
+- Normalized checklist: [] (0 items)
+- Verification run: <commands>
+- Verification result: <pass>
+```
+
+Rules:
+- "No findings" must be evidenced, not asserted.
+- Prefer direct reviewer output text; if unavailable, provide a saved artifact/log reference plus extracted empty checklist.
+- Do not finish without this block.
 
 ## Example Trigger Phrases
 
