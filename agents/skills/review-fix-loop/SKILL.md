@@ -20,7 +20,7 @@ For every loop round, apply both skills explicitly:
 
 1. Review acquisition must follow `$requesting-code-review`.
    - Get SHAs (`BASE_SHA`, `HEAD_SHA`).
-   - Request review using the `requesting-code-review/code-reviewer.md` template format.
+   - Request review using the `$requesting-code-review` template (`code-reviewer.md` in that skill).
 2. Feedback handling and fixes must follow `$receiving-code-review`.
    - Use the full sequence: `READ -> UNDERSTAND -> VERIFY -> EVALUATE -> RESPOND -> IMPLEMENT`.
    - Do not apply suggestions blindly.
