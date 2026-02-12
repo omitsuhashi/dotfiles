@@ -30,7 +30,7 @@ For every loop round, apply both skills explicitly:
 
 Use these defaults unless the user overrides them:
 
-- `max_rounds`: 5
+- `max_rounds`: 10
 - `severity_scope`: all findings (`Critical`, `Important`, `Minor`)
 - `stop_on_repeated_findings`: stop when the same unresolved finding repeats for 2 consecutive rounds
 - `autonomy`: continue looping without asking after each round; ask only for blockers/ambiguity
