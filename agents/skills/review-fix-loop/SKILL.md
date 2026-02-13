@@ -9,12 +9,13 @@ description: Use when the user asks to repeatedly run code review and apply fixe
 
 Run a strict "review -> fix -> review" cycle without stopping after the first pass.
 Continue until no actionable findings remain or a hard stop condition is met.
-In Codex runtime, the primary review path is `codex review --base <branch>`.
+Run this in two phases:
+1. Loop phase: run review rounds using `$requesting-code-review`.
+2. Final gate: when loop findings become zero, run one explicit `/review` as final clean confirmation.
 
 **REQUIRED SUB-SKILL:** Use `$requesting-code-review` for review rubric/context quality.
 **REQUIRED SUB-SKILL:** Use `$receiving-code-review` to evaluate and apply feedback rigorously.
 **REQUIRED SUB-SKILL:** Use `superpowers:verification-before-completion` before claiming completion.
-**PRECEDENCE RULE:** If this skill conflicts with `$requesting-code-review` on invocation mechanics, this skill wins.
 
 ## Review Invocation Contract
 
@@ -23,17 +24,11 @@ Do not improvise per round.
 
 ### Method Priority (deterministic)
 
-1. If `codex` CLI is available, use `codex review --base origin/<comparison_branch>`.
-2. Else if slash command `/review` is available, use `/review` with the filled `requesting-code-review/code-reviewer.md` template.
-3. Else use Task fallback with `superpowers:code-reviewer` and the same template.
-
-### Codex Route Rules (strict)
-
-- Command per round: `codex review --base origin/<comparison_branch> | tee /tmp/review_round<N>_output.txt`
-- Allowed with `--base`: no prompt argument and no stdin prompt (`-`).
-- Forbidden combination: `codex review --base ... -` or any `[PROMPT]` with `--base` (this errors).
-- Do not run `codex review --help` during loop rounds; treat this contract as fixed.
-- If you want template context for traceability, save it as artifact only (do not feed it to `codex review --base`).
+1. Use `$requesting-code-review` flow for every loop round.
+2. Inside that flow, use slash `/review` + `requesting-code-review/code-reviewer.md` template when available.
+3. If slash command is unavailable, use Task fallback with `superpowers:code-reviewer` and the same template.
+4. After loop findings are zero, run one additional explicit `/review` as final clean gate.
+5. If slash `/review` is unavailable in the runtime, execute the same final gate via Task fallback and clearly note that slash was unavailable.
 
 ## Sub-Skill Contract
 
@@ -41,13 +36,14 @@ For every loop round, apply both skills explicitly:
 
 1. Review acquisition must follow `$requesting-code-review`.
    - Get SHAs (`BASE_SHA`, `HEAD_SHA`).
-   - In Codex runtime, run `codex review --base origin/<comparison_branch>` and save output artifact for the round.
-   - Use `requesting-code-review/code-reviewer.md` as checklist context artifact when needed, but do not pass it as prompt with `--base`.
-   - Outside Codex runtime, follow `/review` -> Task fallback order with the same template.
+   - Use `/review` with `requesting-code-review/code-reviewer.md` template when available.
+   - If slash is unavailable, use Task fallback with the same template.
 2. Feedback handling and fixes must follow `$receiving-code-review`.
    - Use the full sequence: `READ -> UNDERSTAND -> VERIFY -> EVALUATE -> RESPOND -> IMPLEMENT`.
    - Do not apply suggestions blindly.
    - If any feedback item is unclear, stop and clarify before implementation.
+3. When a loop round returns zero findings, run final gate `/review` once more before declaring clean.
+   - Treat final gate findings as normal findings (fix and continue loop).
 
 ## Defaults
 
@@ -58,6 +54,7 @@ Use these defaults unless the user overrides them:
 - `severity_scope`: all findings (`Critical`, `Important`, `Minor`)
 - `stop_on_repeated_findings`: stop when the same unresolved finding repeats for 2 consecutive rounds
 - `commit_after_fix`: required (create a commit after each completed fix phase that has changes)
+- `final_slash_review_required`: true
 - `autonomy`: continue looping without asking after each round; ask only for blockers/ambiguity
 
 ## Loop Workflow
@@ -70,14 +67,16 @@ Use these defaults unless the user overrides them:
    - Capture acceptance requirements (issue, plan, or explicit user request).
 2. Run review round `N`.
    - Run the pinned `review_method` for the current branch range (`BASE_SHA` -> `HEAD_SHA`).
-   - For Codex route, run exactly: `codex review --base origin/<comparison_branch> | tee /tmp/review_round<N>_output.txt`.
+   - Execute `$requesting-code-review` contract (`/review` + template, or Task fallback).
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
      - `R<N>-M#` for Minor
    - Publish the round report with per-finding detail (ID, severity, location, summary, status). Do not output counts only.
 3. Decide continuation.
-   - If checklist is empty: still publish this round report with `Findings detail: none` and then go to final verification.
+   - If checklist is empty: still publish this round report with `Findings detail: none`, then run final gate `/review`.
+   - If final gate `/review` also returns no findings: go to final verification.
+   - If final gate `/review` returns findings: add them to next round checklist and continue fix phase.
    - If checklist has findings: continue to fix phase.
 4. Fix findings one-by-one.
    - Start from highest severity.
@@ -103,6 +102,7 @@ Stop the loop only when at least one condition is true:
 2. `max_rounds` is reached.
 3. The same unresolved finding repeats for 2 rounds with no technically valid fix path.
 4. Feedback conflicts with requirements and needs user decision.
+5. Final gate review cannot run due runtime limitation and no valid fallback is available.
 
 When stopping with unresolved findings, report:
 - unresolved item IDs
@@ -120,10 +120,10 @@ When stopping with unresolved findings, report:
 - Re-review is mandatory after each committed fix round until findings are zero or another Stop Condition is met.
 - Review the committed branch state against `comparison_branch` each round.
 - Use the current existing worktree throughout; worktree recreation is out of scope.
-- Every review round must record review method (`codex review --base`, slash `/review`, or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
+- Every review round must record review method (slash `/review` or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
 - Every review round must output the concrete finding list; summary counts alone are not acceptable.
 - If a round has zero findings, output `Findings detail: none` explicitly.
-- In Codex route, every round must retain reviewer artifact log at `/tmp/review_round<N>_output.txt`.
+- When round findings are zero, final gate `/review` is mandatory before declaring clean.
 - Never declare "done" without a final clean review pass and verification evidence.
 
 ## Round Report Format
@@ -133,12 +133,13 @@ Use this compact structure every round:
 ```markdown
 Round N/5
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Review method: <`codex review --base origin/<comparison_branch>` | slash command `/review` | Task(superpowers:code-reviewer)>
-- Reviewer artifact: </tmp/review_round<N>_output.txt | n/a>
+- Review method: <slash command `/review` | Task(superpowers:code-reviewer)>
+- Reviewer artifact: <review output summary or saved log path>
 - Fix commit: <hash/none>
 - Worktree: existing worktree (no recreation)
 - Findings: Critical=<n>, Important=<n>, Minor=<n>
 - Findings detail: <for each finding -> ID | severity | location | summary | status(open/fixed/deferred); use `none` when empty>
+- Final gate `/review`: <pending/not-run/pass/fail + short reason>
 - Fixed in this round: <ID list>
 - Verification run: <commands>
 - Verification result: <pass/fail + short reason>
@@ -153,9 +154,10 @@ When the loop exits because findings are zero, include this evidence block in th
 Final Clean Evidence
 - Clean round: <Round N>
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Review method: <`codex review --base origin/<comparison_branch>` | slash command `/review` | Task(superpowers:code-reviewer)>
-- Reviewer artifact: </tmp/review_round<N>_output.txt | n/a>
-- Reviewer evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
+- Loop clean method: <slash command `/review` | Task(superpowers:code-reviewer)>
+- Loop clean evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
+- Final gate method: <slash command `/review` | Task(superpowers:code-reviewer)>
+- Final gate evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
 - Normalized checklist: [] (0 items)
 - Verification run: <commands>
 - Verification result: <pass>
@@ -164,6 +166,7 @@ Final Clean Evidence
 Rules:
 - "No findings" must be evidenced, not asserted.
 - Prefer direct reviewer output text; if unavailable, provide a saved artifact/log reference plus extracted empty checklist.
+- Final gate `/review` result must be included explicitly.
 - Do not finish without this block.
 
 ## Example Trigger Phrases
