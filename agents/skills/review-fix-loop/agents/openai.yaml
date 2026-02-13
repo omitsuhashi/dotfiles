@@ -1,4 +1,4 @@
 interface:
   display_name: "Review Fix Loop"
   short_description: "Help with Review Fix Loop tasks"
-  default_prompt: "Use $review-fix-loop. Start with $requesting-code-review rounds (/review + template), fix findings with $receiving-code-review, and after findings reach zero run one final explicit /review gate."
+  default_prompt: "Use $review-fix-loop. Start with $requesting-code-review rounds (prefer codex review + template, fallback to /review, then Task(superpowers:code-reviewer)), fix findings with $receiving-code-review, and after findings reach zero run one final explicit gate with the pinned method."
