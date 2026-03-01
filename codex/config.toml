@@ -122,4 +122,5 @@ skills = true
 shell_snapshot = true
 apps = true
 steer = true
-
+multi_agent = true
+prevent_idle_sleep = true
