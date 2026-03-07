@@ -21,15 +21,15 @@ Run this in two phases:
 
 Choose review method once at Round 1 and keep it fixed for the entire loop, including final gate.
 Do not improvise per round.
+This skill does not invoke slash-style review entrypoints.
 
 ### Method Priority (deterministic)
 
 1. Use `$requesting-code-review` flow for every loop round.
 2. Inside that flow, use `codex review` + `requesting-code-review/code-reviewer.md` template when available.
-3. If `codex review` is unavailable, use slash `/review` + the same template.
-4. If slash command is unavailable, use Task fallback with `superpowers:code-reviewer` and the same template.
-5. After loop findings are zero, run one additional explicit final gate using the pinned review method.
-6. If pinned method hard-fails at runtime, move to next fallback in this same priority order and record reason.
+3. If `codex review` is unavailable, use Task fallback with `superpowers:code-reviewer` and the same template.
+4. After loop findings are zero, run one additional explicit final gate using the pinned review method.
+5. If pinned method hard-fails at runtime, move to next fallback in this same priority order and record reason.
 
 `codex review` availability check (recommended at Round 1):
 - `command -v codex`
@@ -43,8 +43,7 @@ For every loop round, apply both skills explicitly:
    - Get SHAs (`BASE_SHA`, `HEAD_SHA`).
    - Run the pinned method with `requesting-code-review/code-reviewer.md` template:
      - Preferred: `cat requesting-code-review/code-reviewer.md | codex review --base <comparison_branch> -`
-     - Fallback 1: `/review` + same template.
-     - Fallback 2: Task with `superpowers:code-reviewer` + same template.
+     - Fallback: Task with `superpowers:code-reviewer` + same template.
    - If template file is unavailable in the runtime, pass the same rubric as inline prompt text and record that fallback.
    - Save reviewer artifact (stdout summary or log path) every round.
 2. Feedback handling and fixes must follow `$receiving-code-review`.
@@ -63,7 +62,7 @@ Use these defaults unless the user overrides them:
 - `severity_scope`: all findings (`Critical`, `Important`, `Minor`)
 - `stop_on_repeated_findings`: stop when the same unresolved finding repeats for 2 consecutive rounds
 - `commit_after_fix`: required (create a commit after each completed fix phase that has changes)
-- `review_method_preference`: `codex review -> /review -> Task(superpowers:code-reviewer)`
+- `review_method_preference`: `codex review -> Task(superpowers:code-reviewer)`
 - `final_gate_review_required`: true
 - `autonomy`: continue looping without asking after each round; ask only for blockers/ambiguity
 
@@ -79,7 +78,7 @@ Use these defaults unless the user overrides them:
 2. Run review round `N`.
    - Run the pinned `review_method` for the current branch range (`BASE_SHA` -> `HEAD_SHA`).
    - For `codex review`, execute with `--base <comparison_branch>` and record `BASE_SHA..HEAD_SHA` for range traceability.
-   - Execute `$requesting-code-review` contract (`codex review` + template, `/review` fallback, Task fallback).
+   - Execute `$requesting-code-review` contract (`codex review` + template, Task fallback).
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
@@ -132,7 +131,7 @@ When stopping with unresolved findings, report:
 - Re-review is mandatory after each committed fix round until findings are zero or another Stop Condition is met.
 - Review the committed branch state against `comparison_branch` each round.
 - Use the current existing worktree throughout; worktree recreation is out of scope.
-- Every review round must record review method (`codex review`, slash `/review`, or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
+- Every review round must record review method (`codex review` or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
 - Every review round must output the concrete finding list; summary counts alone are not acceptable.
 - If a round has zero findings, output `Findings detail: none` explicitly.
 - When round findings are zero, final gate with pinned review method is mandatory before declaring clean.
@@ -145,7 +144,7 @@ Use this compact structure every round:
 ```markdown
 Round N/5
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Review method: <`codex review` | slash command `/review` | Task(superpowers:code-reviewer)>
+- Review method: <`codex review` | Task(superpowers:code-reviewer)>
 - Reviewer artifact: <review output summary or saved log path>
 - Fix commit: <hash/none>
 - Worktree: existing worktree (no recreation)
@@ -166,9 +165,9 @@ When the loop exits because findings are zero, include this evidence block in th
 Final Clean Evidence
 - Clean round: <Round N>
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Loop clean method: <`codex review` | slash command `/review` | Task(superpowers:code-reviewer)>
+- Loop clean method: <`codex review` | Task(superpowers:code-reviewer)>
 - Loop clean evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
-- Final gate method: <`codex review` | slash command `/review` | Task(superpowers:code-reviewer)>
+- Final gate method: <`codex review` | Task(superpowers:code-reviewer)>
 - Final gate evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
 - Normalized checklist: [] (0 items)
 - Verification run: <commands>
