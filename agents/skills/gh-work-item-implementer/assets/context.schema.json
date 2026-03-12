@@ -6,6 +6,7 @@
     "issue",
     "parent",
     "sub_issues",
+    "hierarchy",
     "siblings",
     "dependencies",
     "related"
@@ -35,6 +36,9 @@
     "sub_issues": {
       "type": "array",
       "items": { "$ref": "#/$defs/issue" }
+    },
+    "hierarchy": {
+      "$ref": "#/$defs/hierarchy"
     },
     "siblings": {
       "type": "array",
@@ -111,6 +115,34 @@
           "items": { "type": "string" }
         },
         "body": { "type": "string" }
+      }
+    },
+    "issueUnit": {
+      "type": "object",
+      "required": ["issue", "sub_issues"],
+      "properties": {
+        "issue": { "$ref": "#/$defs/issue" },
+        "sub_issues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issue" }
+        }
+      }
+    },
+    "hierarchy": {
+      "type": "object",
+      "required": ["level", "epic", "issues"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["epic", "issue", "sub_issue", "standalone_issue"]
+        },
+        "epic": {
+          "anyOf": [{ "$ref": "#/$defs/issue" }, { "type": "null" }]
+        },
+        "issues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issueUnit" }
+        }
       }
     }
   }
