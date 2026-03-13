@@ -1,6 +1,6 @@
 hide_agent_reasoning = true
 network_access = true
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 web_search_request = true
 profile = "sandbox"
