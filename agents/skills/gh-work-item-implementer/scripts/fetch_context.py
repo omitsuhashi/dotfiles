@@ -216,6 +216,14 @@ def issue_ref(default_owner: str, default_repo: str, issue_obj: Dict[str, Any]) 
     }
 
 
+def is_same_issue(left: Dict[str, Any], right: Dict[str, Any]) -> bool:
+    return (
+        left.get("owner") == right.get("owner")
+        and left.get("repo") == right.get("repo")
+        and int(left.get("issue_number", -1)) == int(right.get("issue_number", -1))
+    )
+
+
 def fetch_issue(owner: str, repo: str, number: int) -> Dict[str, Any]:
     raw = gh_api_json(f"/repos/{owner}/{repo}/issues/{number}")
     if not isinstance(raw, dict):
@@ -246,6 +254,18 @@ def fetch_sub_issues(owner: str, repo: str, number: int) -> List[Dict[str, Any]]
                 issue_targets.append(key)
 
     return [fetch_issue(item_owner, item_repo, n) for item_owner, item_repo, n in issue_targets]
+
+
+def filter_issues_by_scope(issues: Sequence[Dict[str, Any]], scope: str) -> List[Dict[str, Any]]:
+    if scope != "open":
+        return list(issues)
+    return [entry for entry in issues if entry.get("state") != "closed"]
+
+
+def ensure_issue_present(items: Sequence[Dict[str, Any]], issue: Dict[str, Any]) -> List[Dict[str, Any]]:
+    if any(is_same_issue(entry, issue) for entry in items):
+        return list(items)
+    return list(items) + [issue]
 
 
 def fetch_parent(owner: str, repo: str, number: int) -> Optional[Dict[str, Any]]:
@@ -354,6 +374,56 @@ def heuristic_neighbors(owner: str, repo: str, issue: Dict[str, Any]) -> List[Di
     return [issue_ref(owner, repo, by_num[n]) for n in neighbor_nums if n in by_num]
 
 
+def build_hierarchy(
+    issue: Dict[str, Any],
+    parent: Optional[Dict[str, Any]],
+    target_sub_issues_all: Sequence[Dict[str, Any]],
+    target_sub_issues_scoped: Sequence[Dict[str, Any]],
+    scope: str,
+) -> Dict[str, Any]:
+    if parent is None and target_sub_issues_all:
+        epic_issues = []
+        for child_issue in target_sub_issues_scoped:
+            child_sub_issues = fetch_sub_issues(
+                child_issue["owner"],
+                child_issue["repo"],
+                int(child_issue["issue_number"]),
+            )
+            epic_issues.append(
+                {
+                    "issue": child_issue,
+                    "sub_issues": filter_issues_by_scope(child_sub_issues, scope),
+                }
+            )
+        return {"level": "epic", "epic": issue, "issues": epic_issues}
+
+    if target_sub_issues_all:
+        return {
+            "level": "issue",
+            "epic": parent,
+            "issues": [{"issue": issue, "sub_issues": list(target_sub_issues_scoped)}],
+        }
+
+    if parent is not None:
+        p_owner = parent["owner"]
+        p_repo = parent["repo"]
+        p_num = int(parent["issue_number"])
+        parent_sub_issues = filter_issues_by_scope(fetch_sub_issues(p_owner, p_repo, p_num), scope)
+        parent_sub_issues = ensure_issue_present(parent_sub_issues, issue)
+        epic = fetch_parent(p_owner, p_repo, p_num)
+        return {
+            "level": "sub_issue",
+            "epic": epic,
+            "issues": [{"issue": parent, "sub_issues": parent_sub_issues}],
+        }
+
+    return {
+        "level": "standalone_issue",
+        "epic": None,
+        "issues": [{"issue": issue, "sub_issues": list(target_sub_issues_scoped)}],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch GitHub issue context for implementation workflows")
     parser.add_argument("target", help="Issue URL, owner/repo#123, or #123")
@@ -382,35 +452,28 @@ def main() -> None:
 
     issue = fetch_issue(owner, repo, issue_number)
     parent = fetch_parent(owner, repo, issue_number)
-    sub_issues = fetch_sub_issues(owner, repo, issue_number)
-    mode = "epic" if sub_issues else "issue"
-
-    if args.scope == "open":
-        sub_issues = [entry for entry in sub_issues if entry.get("state") != "closed"]
+    target_sub_issues_all = fetch_sub_issues(owner, repo, issue_number)
+    mode = "epic" if target_sub_issues_all else "issue"
+    sub_issues = filter_issues_by_scope(target_sub_issues_all, args.scope)
 
     siblings: List[Dict[str, Any]] = []
     if parent is not None:
         p_owner = parent["owner"]
         p_repo = parent["repo"]
         p_num = int(parent["issue_number"])
-        parent_sub_issues = fetch_sub_issues(p_owner, p_repo, p_num)
+        parent_sub_issues = filter_issues_by_scope(fetch_sub_issues(p_owner, p_repo, p_num), args.scope)
         for sibling in parent_sub_issues:
-            same_issue = (
-                sibling.get("owner") == issue.get("owner")
-                and sibling.get("repo") == issue.get("repo")
-                and int(sibling.get("issue_number", -1)) == issue_number
-            )
-            if same_issue:
-                continue
-            if args.scope == "open" and sibling.get("state") == "closed":
+            if is_same_issue(sibling, issue):
                 continue
             siblings.append(sibling)
 
     dependencies = fetch_dependencies(owner, repo, issue_number)
 
     related = {"heuristic_neighbors": []}
-    if parent is None and not sub_issues:
+    if mode == "issue" and parent is None and not sub_issues:
         related["heuristic_neighbors"] = heuristic_neighbors(owner, repo, issue)
+
+    hierarchy = build_hierarchy(issue, parent, target_sub_issues_all, sub_issues, args.scope)
 
     context = {
         "target": {
@@ -424,6 +487,7 @@ def main() -> None:
         "issue": issue,
         "parent": parent,
         "sub_issues": sub_issues,
+        "hierarchy": hierarchy,
         "siblings": siblings,
         "dependencies": dependencies,
         "related": related,

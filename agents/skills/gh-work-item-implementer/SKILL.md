@@ -1,6 +1,6 @@
 ---
 name: gh-work-item-implementer
-description: Use when the user provides a GitHub Issue reference (URL, owner/repo#number, or #number) and asks to implement it end-to-end with parent/sub-issue and dependency context.
+description: Use when the user provides a GitHub Issue reference (URL, owner/repo#number, or #number) and asks to implement it end-to-end with Epic/Issue/Sub-issue hierarchy and dependency context.
 ---
 
 # GitHub Work Item Implementer
@@ -12,7 +12,7 @@ Accept exactly one target:
 - Local: `#<number>` (resolve owner/repo from `git remote origin`)
 
 Optional flags in the same line:
-- `mode=auto|epic|issue` (default `auto`)
+- `mode=auto|epic|issue|sub-issue` (default `auto`)
 - `scope=open|all` (default `open`)
 - `commit=per-issue|fine-grained` (default `per-issue`; both enforce at least one commit per issue)
 - `context_dir=<path>` (default `./.work-items`)
@@ -21,62 +21,62 @@ Optional flags in the same line:
 - `<context_dir>/<owner>-<repo>#<num>/context.json`
 - `<context_dir>/<owner>-<repo>#<num>/context.md`
 
+## REQUIRED SUPER_POWERS (in order)
+1. `superpowers:writing-plans`
+2. `superpowers:subagent-driven-development` (if tasks are independent) or `superpowers:executing-plans` (if tightly coupled)
+3. `$review-fix-loop` (review gate for each completed Issue unit)
+4. `superpowers:verification-before-completion`
+5. `superpowers:finishing-a-development-branch` (only when the user asks to merge/PR/cleanup)
+
 ## Strict Workflow
 1. Fetch context deterministically.
-   - `python3 ".agents/skills/gh-work-item-implementer/scripts/fetch_context.py" <TARGET> --scope <scope> --context-dir <context_dir>`
-   - `python3 ".agents/skills/gh-work-item-implementer/scripts/render_context.py" <context.json> > <context.md>`
-2. Decide work mode.
-   - If `mode=epic` OR issue has `sub_issues` => epic mode.
-   - Else => issue mode.
-3. Define DoD in chat.
+   - `python3 "agents/skills/gh-work-item-implementer/scripts/fetch_context.py" <TARGET> --scope <scope> --context-dir <context_dir>`
+   - `python3 "agents/skills/gh-work-item-implementer/scripts/render_context.py" <context.json> > <context.md>`
+2. Build execution units from 3-level hierarchy (`Epic -> Issue -> Sub-issue`).
+   - If target is an Epic: expand to `Issue units`, each with its own `Sub-issues`.
+   - If target is an Issue: create one `Issue unit` with its `Sub-issues`.
+   - If target is a Sub-issue: create one `Issue unit` using the parent Issue, and scope implementation to the target Sub-issue.
+   - Unit order:
+     - Keep API order by default.
+     - If dependency edges exist, process `blocked_by` before `blocking`.
+3. Define DoD in chat for each Issue unit.
    - Write a short checklist from acceptance criteria.
-   - If criteria are missing, infer the minimum and mark assumptions.
-4. Implement.
-
-### Epic Mode
-- Implement each open sub-issue in the order returned by the Sub-issues API.
-- If dependency edges exist among sub-issues, process `blocked_by` before `blocking`.
-- After each sub-issue reaches DoD and tests are green, close that sub-issue via `gh issue close`.
-- Commit strategy:
-  - `per-issue`: at least one commit per sub-issue (default)
-  - `fine-grained`: still at least one commit per sub-issue, and split into multiple coherent commits when safer/reviewable
-  - Never combine multiple sub-issues into a single commit.
-
-### Issue Mode
-- If parent exists, read parent + siblings + dependencies before coding.
-- Implement only target issue scope.
-- Do not conflict with epic plan and sibling responsibilities.
-- If the target is a sub-issue and is completed, close it via `gh issue close`.
-- Commit strategy:
-  - `per-issue`: at least one commit for the target issue (default)
-  - `fine-grained`: still at least one commit for the target issue, and split into multiple coherent commits when changes span independent concerns
+   - If criteria are missing, infer minimum viable acceptance and mark assumptions.
+4. Implement Issue units one-by-one.
+   - For each Issue unit, complete Sub-issues first, then Issue-level integration.
+   - Commit strategy:
+     - `per-issue`: at least one commit per completed Sub-issue, and at least one commit for the Issue-level integration.
+     - `fine-grained`: keep the same minimums, and split into coherent commits as needed.
+   - Never mix multiple Issue units into a single commit.
+5. Verification before review gate.
+   - Run repository-relevant tests/lint.
+   - Fix failures and rerun until clean.
+6. Review gate per completed Issue unit.
+   - After all implementation for the current Issue unit is done, run `$review-fix-loop`.
+   - Do not proceed to the next Issue unit until review findings are zero and verification is green.
+7. Close completed work items after clean gate.
+   - Close completed Sub-issues:
+     - `gh issue close <sub_issue_number> --repo <owner>/<repo> --comment "Implemented and verified in this task."`
+   - Close the Issue when its Sub-issues (if any) and Issue-level DoD are complete:
+     - `gh issue close <issue_number> --repo <owner>/<repo> --comment "Implemented and verified in this task."`
+   - Do not close the Epic unless explicitly requested by the user.
+8. Final report.
+   - Changes summary grouped by `Issue -> Sub-issue`
+   - Tests/lint run and results
+   - Review-gate evidence (clean round + final gate result)
+   - Assumptions and follow-ups
 
 ### Commit Invariant (All Modes)
-- Minimum requirement: at least one commit per completed issue/sub-issue in this task.
-- `fine-grained` allows extra commits within one issue, but does not relax the per-issue minimum.
-- A single commit must not mix changes from multiple issues/sub-issues.
+- Minimum requirement: at least one commit per completed Issue/Sub-issue in this task.
+- `fine-grained` allows extra commits within one work item, but does not relax per-item minimum.
+- A single commit must not mix changes from multiple Issue units.
 
 ### Standalone Bug
 - Parent may be null.
 - Use dependencies and issue body/repro steps as primary anchors.
 
-5. Verification.
-- Run the most relevant test/lint commands for the repository.
-- Fix failures and rerun until clean.
-
-6. Close completed issue(s).
-- If a sub-issue is fully implemented and verification is clean, close it:
-  - `gh issue close <sub_issue_number> --repo <owner>/<repo> --comment "Implemented and verified in this task."`
-- In epic mode, close each completed sub-issue before moving to the next one.
-- In issue mode, if the target itself is a sub-issue and DoD is satisfied, close the target issue.
-
-7. Final report.
-- Changes summary (group by sub-issue in epic mode)
-- Tests run and results
-- Assumptions and follow-ups
-
 ## Notes
 - This skill depends on GitHub CLI authentication (`gh auth status`).
-- `fetch_context.py` normalizes all missing links to `null` or empty arrays so downstream steps can handle standalone bugs safely.
+- `fetch_context.py` normalizes missing links to `null` or empty arrays so standalone issues are safe.
 - Implement in the current Codex session working directory.
 - Do not create/switch git branches or create/use git worktrees unless the user explicitly asks.
