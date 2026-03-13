@@ -42,6 +42,7 @@ def main() -> None:
     issue = ctx["issue"]
     parent = ctx.get("parent")
     sub_issues = ctx.get("sub_issues", [])
+    hierarchy = ctx.get("hierarchy", {"level": "unknown", "epic": None, "issues": []})
     siblings = ctx.get("siblings", [])
     dependencies = ctx.get("dependencies", {"blocked_by": [], "blocking": []})
     neighbors = ctx.get("related", {}).get("heuristic_neighbors", [])
@@ -49,6 +50,7 @@ def main() -> None:
     print(f"# Work Item Context: {target['owner']}/{target['repo']}#{target['issue_number']}\n")
     print(f"- URL: {target['url']}")
     print(f"- Mode: {mode}\n")
+    print(f"- Hierarchy level: {hierarchy.get('level', 'unknown')}\n")
 
     print("## Target Issue\n")
     print(md_issue(issue))
@@ -62,14 +64,45 @@ def main() -> None:
         print("</details>\n")
 
     if parent:
-        print("## Parent (Epic)\n")
+        print("## Parent\n")
         print(md_issue(parent))
         print()
+
+    epic = hierarchy.get("epic")
+    if isinstance(epic, dict):
+        is_target = (
+            epic.get("owner") == issue.get("owner")
+            and epic.get("repo") == issue.get("repo")
+            and int(epic.get("issue_number", -1)) == int(issue.get("issue_number", -1))
+        )
+        if not is_target:
+            print("## Epic\n")
+            print(md_issue(epic))
+            print()
 
     if sub_issues:
         print("## Sub-issues (Implementation scope)\n")
         for sub_issue in sub_issues:
             print(md_issue(sub_issue))
+        print()
+
+    issue_units = hierarchy.get("issues", [])
+    if issue_units:
+        print("## Execution Units (Issue -> Sub-issue)\n")
+        for unit in issue_units:
+            issue_item = unit.get("issue")
+            if not isinstance(issue_item, dict):
+                continue
+            print(md_issue(issue_item))
+            child_sub_issues = unit.get("sub_issues", [])
+            if child_sub_issues:
+                for child in child_sub_issues:
+                    print(
+                        f"  - #{child['issue_number']} **{child.get('title', '')}** ({child.get('state', '')})\n"
+                        f"    {child.get('url', '')}"
+                    )
+            else:
+                print("  - (no sub-issues)")
         print()
 
     if siblings:
