@@ -276,6 +276,7 @@ class MainModeScopeFilteringTests(unittest.TestCase):
             with open(output_path, "r", encoding="utf-8") as fp:
                 payload = json.load(fp)
 
+        self.assertEqual(payload["mode"], "sub_issue")
         self.assertEqual(payload["hierarchy"]["level"], "sub_issue")
         self.assertEqual(payload["hierarchy"]["epic"]["issue_number"], 10)
         self.assertEqual(payload["hierarchy"]["issues"][0]["issue"]["issue_number"], 20)

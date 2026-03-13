@@ -14,6 +14,7 @@ Accept exactly one target:
 Optional flags in the same line:
 - `mode=auto|epic|issue|sub-issue` (default `auto`)
 - `scope=open|all` (default `open`)
+- `review=on|off` (default `on`; `off` skips `$review-fix-loop`)
 - `commit=per-issue|fine-grained` (default `per-issue`; both enforce at least one commit per issue)
 - `context_dir=<path>` (default `./.work-items`)
 
@@ -24,9 +25,9 @@ Optional flags in the same line:
 ## REQUIRED SUPER_POWERS (in order)
 1. `superpowers:writing-plans`
 2. `superpowers:subagent-driven-development` (if tasks are independent) or `superpowers:executing-plans` (if tightly coupled)
-3. `$review-fix-loop` (review gate for each completed Issue unit)
+3. `$review-fix-loop` (required when `review=on`; skip entirely when `review=off`)
 4. `superpowers:verification-before-completion`
-5. `superpowers:finishing-a-development-branch` (only when the user asks to merge/PR/cleanup)
+5. `superpowers:finishing-a-development-branch` (optional, and only after completed Sub-issues/Issues are closed and the user asks to merge/PR/cleanup)
 
 ## Strict Workflow
 1. Fetch context deterministically.
@@ -52,19 +53,23 @@ Optional flags in the same line:
    - Run repository-relevant tests/lint.
    - Fix failures and rerun until clean.
 6. Review gate per completed Issue unit.
-   - After all implementation for the current Issue unit is done, run `$review-fix-loop`.
-   - Do not proceed to the next Issue unit until review findings are zero and verification is green.
-7. Close completed work items after clean gate.
+   - If `review=on`: after all implementation for the current Issue unit is done, run `$review-fix-loop`.
+   - If `review=off`: skip the review gate entirely and rely on fresh verification evidence only.
+   - Do not proceed to the next Issue unit until the active gate is green (`review=on`: zero findings + verification green, `review=off`: verification green).
+   - If the execution skill would normally jump to branch-finish/PR options after implementation, override that default and return to this workflow first.
+7. Close completed work items after the active gate is green.
    - Close completed Sub-issues:
      - `gh issue close <sub_issue_number> --repo <owner>/<repo> --comment "Implemented and verified in this task."`
    - Close the Issue when its Sub-issues (if any) and Issue-level DoD are complete:
      - `gh issue close <issue_number> --repo <owner>/<repo> --comment "Implemented and verified in this task."`
-   - Do not close the Epic unless explicitly requested by the user.
+   - Never close the Epic in this skill, even if all child work is complete, unless the user explicitly asks in a separate follow-up.
 8. Final report.
    - Changes summary grouped by `Issue -> Sub-issue`
    - Tests/lint run and results
-   - Review-gate evidence (clean round + final gate result)
+   - Review-gate evidence (clean round + final gate result) when `review=on`, or explicit `review skipped by flag` note when `review=off`
    - Assumptions and follow-ups
+9. Optional branch finishing.
+   - Only after step 8, and only if the user asks to merge/PR/cleanup, use `superpowers:finishing-a-development-branch`.
 
 ### Commit Invariant (All Modes)
 - Minimum requirement: at least one commit per completed Issue/Sub-issue in this task.
@@ -80,3 +85,5 @@ Optional flags in the same line:
 - `fetch_context.py` normalizes missing links to `null` or empty arrays so standalone issues are safe.
 - Implement in the current Codex session working directory.
 - Do not create/switch git branches or create/use git worktrees unless the user explicitly asks.
+- Parent workflow owns GitHub work-item closure. Do not treat generic plan/task completion or branch-finishing as a substitute for step 7.
+- `review=off` is a user-controlled speed/strictness tradeoff. Do not silently skip review unless the flag is explicitly set.

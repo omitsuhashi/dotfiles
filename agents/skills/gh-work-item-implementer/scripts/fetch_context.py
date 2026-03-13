@@ -453,7 +453,12 @@ def main() -> None:
     issue = fetch_issue(owner, repo, issue_number)
     parent = fetch_parent(owner, repo, issue_number)
     target_sub_issues_all = fetch_sub_issues(owner, repo, issue_number)
-    mode = "epic" if target_sub_issues_all else "issue"
+    if target_sub_issues_all:
+        mode = "epic" if parent is None else "issue"
+    elif parent is not None:
+        mode = "sub_issue"
+    else:
+        mode = "issue"
     sub_issues = filter_issues_by_scope(target_sub_issues_all, args.scope)
 
     siblings: List[Dict[str, Any]] = []
