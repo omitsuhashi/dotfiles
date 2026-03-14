@@ -15,7 +15,7 @@ Optional flags in the same line:
 - `mode=auto|epic|issue|sub-issue` (default `auto`)
 - `scope=open|all` (default `open`)
 - `review=on|off` (default `on`; `off` skips `$review-fix-loop`)
-- `commit=per-issue|fine-grained` (default `per-issue`; both enforce at least one commit per issue)
+- `commit=per-issue|fine-grained` (default `per-issue`; both enforce at least one commit per completed Sub-issue and per completed Issue-level integration)
 - `context_dir=<path>` (default `./.work-items`)
 
 ## Must Produce (Artifacts)
@@ -53,6 +53,7 @@ Optional flags in the same line:
    - Commit strategy:
      - `per-issue`: at least one commit per completed Sub-issue, and at least one commit for the Issue-level integration.
      - `fine-grained`: keep the same minimums, and split into coherent commits as needed.
+   - A work item is not considered finished for this workflow until its own commit exists.
    - Never mix multiple Issue units into a single commit.
 5. Verification before review gate.
    - Run repository-relevant tests/lint with fresh evidence for the work item about to be closed.
@@ -65,7 +66,12 @@ Optional flags in the same line:
    - If `review=off`: skip the review gate entirely and rely on fresh verification evidence only.
    - Do not proceed to the next sibling Sub-issue or next Issue unit until the active gate is green (`review=on`: zero findings + verification green, `review=off`: verification green).
    - If the execution skill would normally jump to branch-finish/PR options after implementation, override that default and return to this workflow first.
-7. Close completed work items immediately after their own active gate is green.
+7. Commit completed work items immediately after their own active gate is green.
+   - Create at least one commit dedicated to the active completed work item before closing it and before starting any other Sub-issue/Issue unit.
+   - The commit must contain only the changes for that completed Sub-issue or Issue-level integration.
+   - If review or verification produces follow-up fixes, rerun the active gate as needed and then commit the final green state.
+   - If you cannot produce that commit at the required moment, stop and ask the user instead of continuing.
+8. Close completed work items immediately after their own active gate is green and their required commit exists.
    - Determine the active work item kind before any closure command. The only closable kinds in this skill are `sub-issue` and `issue`. Treat `epic` as non-closable even though GitHub stores it as an issue.
    - Close each completed Sub-issue as soon as its implementation is done and its own gate is green. Do not batch Sub-issue closure until the end of the parent Issue unit:
      - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind sub-issue --repo <owner>/<repo> --number <sub_issue_number>`
@@ -73,13 +79,14 @@ Optional flags in the same line:
      - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind issue --repo <owner>/<repo> --number <issue_number>`
    - If any work item cannot be closed at the moment it becomes eligible, stop there and ask the user for a decision instead of continuing with later work items.
    - Never close the Epic in this skill, even if all child work is complete, unless the user explicitly asks in a separate follow-up.
-8. Final report.
+9. Final report.
    - Changes summary grouped by `Issue -> Sub-issue`
+   - Commits created for each completed Sub-issue/Issue
    - Tests/lint run and results
    - Review-gate evidence (clean round + final gate result) when `review=on`, or explicit `review skipped by flag` note when `review=off`
    - Assumptions and follow-ups
-9. Optional branch finishing.
-   - Only after step 8, and only if the user asks to merge/PR/cleanup, use `superpowers:finishing-a-development-branch`.
+10. Optional branch finishing.
+   - Only after step 9, and only if the user asks to merge/PR/cleanup, use `superpowers:finishing-a-development-branch`.
 
 ## Context Compression Handoff
 - Do not resume from file paths alone. Re-state the active `Issue unit`.
@@ -89,7 +96,7 @@ Optional flags in the same line:
   - Short recap: problem, intended behavior, constraints
   - Acceptance criteria or DoD
   - Dependencies, blockers, assumptions
-  - Done status: implemented, verified, reviewed, closed
+  - Done status: implemented, verified, reviewed, committed, closed
   - Exact next action
 - `context.json` and `context.md` are source artifacts, not substitutes for this recap.
 - Prefer one subagent or isolated execution thread per independent unit so compression stays local.
@@ -103,13 +110,15 @@ Recap: problem / intended behavior / constraints
 DoD:
 - ...
 Dependencies: ...
-Status: implemented ...; verified ...; reviewed ...; closed ...
+Status: implemented ...; verified ...; reviewed ...; committed ...; closed ...
 Next: ...
 ```
 
 ### Commit Invariant (All Modes)
 - Minimum requirement: at least one commit per completed Issue/Sub-issue in this task.
 - `fine-grained` allows extra commits within one work item, but does not relax per-item minimum.
+- Each completed Sub-issue/Issue must have its own commit before closure and before work begins on the next sibling or next Issue unit.
+- The per-item commit should represent the final green state for that work item after verification/review fixes.
 - A single commit must not mix changes from multiple Issue units.
 
 ### Standalone Bug
@@ -121,6 +130,7 @@ Next: ...
 - `fetch_context.py` normalizes missing links to `null` or empty arrays so standalone issues are safe.
 - Implement in the current Codex session working directory.
 - Do not create/switch git branches or create/use git worktrees unless the user explicitly asks.
-- Parent workflow owns GitHub work-item closure. Close each completed Sub-issue/Issue at the first valid opportunity defined in step 7, and do not treat generic plan/task completion or branch-finishing as a substitute.
+- Commit timing is mandatory in this skill: do not defer a completed Sub-issue/Issue commit until "later" or batch multiple completed items into one commit.
+- Parent workflow owns GitHub work-item closure. Close each completed Sub-issue/Issue at the first valid opportunity defined in step 8, and do not treat generic plan/task completion or branch-finishing as a substitute.
 - If closure is blocked or ambiguous, stop and escalate to the user immediately rather than deferring closure or guessing.
 - `review=off` is a user-controlled speed/strictness tradeoff. Do not silently skip review unless the flag is explicitly set.
