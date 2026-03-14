@@ -24,7 +24,7 @@ Optional flags in the same line:
 
 ## REQUIRED SUPER_POWERS (in order)
 1. `superpowers:writing-plans`
-2. `superpowers:subagent-driven-development` (if tasks are independent) or `superpowers:executing-plans` (if tightly coupled)
+2. `superpowers:subagent-driven-development` (prefer for large Epics or any independent Issue units to keep context local to each unit and reduce compression risk) or `superpowers:executing-plans` (if tightly coupled)
 3. `$review-fix-loop` (required when `review=on`; skip entirely when `review=off`)
 4. `superpowers:verification-before-completion`
 5. `superpowers:finishing-a-development-branch` (optional, and only after completed Sub-issues/Issues are closed and the user asks to merge/PR/cleanup)
@@ -43,8 +43,11 @@ Optional flags in the same line:
 3. Define DoD in chat for each Issue unit.
    - Write a short checklist from acceptance criteria.
    - If criteria are missing, infer minimum viable acceptance and mark assumptions.
+   - Restate the Issue unit in chat before implementation: objective, constraints, acceptance criteria, dependencies, and any parent/child scope that matters to the current unit.
+   - If the issue body is long, compress it into a short implementation-oriented recap instead of pasting it verbatim.
 4. Implement Issue units one-by-one.
    - For each Issue unit, complete Sub-issues first, then Issue-level integration.
+   - Prefer assigning independent Issue units or clearly bounded Sub-issues to subagents so each unit carries its own local implementation context.
    - After finishing a Sub-issue's implementation, do not leave it open "for later". Run the needed gate for that Sub-issue, and close it immediately once that gate is green before starting the next sibling Sub-issue.
    - If a completed Sub-issue cannot be closed at that point for any reason (permissions, policy ambiguity, GitHub/API error, uncertainty about whether closure is appropriate), stop and ask the user how to proceed.
    - Commit strategy:
@@ -76,6 +79,29 @@ Optional flags in the same line:
    - Assumptions and follow-ups
 9. Optional branch finishing.
    - Only after step 8, and only if the user asks to merge/PR/cleanup, use `superpowers:finishing-a-development-branch`.
+
+## Context Compression Handoff
+- Do not resume from file paths alone. Re-state the active `Issue unit`.
+- Include only:
+  - Target + active `Issue unit`
+  - Short recap: problem, intended behavior, constraints
+  - Acceptance criteria or DoD
+  - Dependencies, blockers, assumptions
+  - Done status: implemented, verified, reviewed, closed
+  - Exact next action
+- `context.json` and `context.md` are source artifacts, not substitutes for this recap.
+- Prefer one subagent or isolated execution thread per independent unit so compression stays local.
+
+```md
+Target: Epic/Issue/Sub-issue ...
+Active unit: ...
+Recap: problem / intended behavior / constraints
+DoD:
+- ...
+Dependencies: ...
+Status: implemented ...; verified ...; reviewed ...; closed ...
+Next: ...
+```
 
 ### Commit Invariant (All Modes)
 - Minimum requirement: at least one commit per completed Issue/Sub-issue in this task.
