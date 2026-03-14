@@ -1,0 +1,73 @@
+{
+  "type": "object",
+  "required": ["target", "mode", "items"],
+  "properties": {
+    "target": {
+      "type": "object",
+      "required": ["raw", "owner", "repo", "issue_number", "url"],
+      "properties": {
+        "raw": { "type": "string" },
+        "owner": { "type": "string" },
+        "repo": { "type": "string" },
+        "issue_number": { "type": "integer" },
+        "url": { "type": "string" }
+      }
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["epic", "issue", "sub_issue", "standalone_issue"]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "number",
+          "title",
+          "parent_issue_number",
+          "status",
+          "base_sha",
+          "head_sha",
+          "commit_shas",
+          "closed_at"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["issue", "sub-issue"]
+          },
+          "number": { "type": "integer" },
+          "title": { "type": "string" },
+          "parent_issue_number": {
+            "anyOf": [{ "type": "integer" }, { "type": "null" }]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "implemented",
+              "verified",
+              "checkpoint_committed",
+              "review_clean",
+              "closed"
+            ]
+          },
+          "base_sha": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "head_sha": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "commit_shas": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "closed_at": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          }
+        }
+      }
+    }
+  }
+}

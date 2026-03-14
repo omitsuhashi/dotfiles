@@ -21,6 +21,7 @@ Optional flags in the same line:
 ## Must Produce (Artifacts)
 - `<context_dir>/<owner>-<repo>#<num>/context.json`
 - `<context_dir>/<owner>-<repo>#<num>/context.md`
+- `<context_dir>/<owner>-<repo>#<num>/work_state.json`
 
 ## REQUIRED SUPER_POWERS (in order)
 1. `superpowers:writing-plans`
@@ -33,6 +34,7 @@ Optional flags in the same line:
 1. Fetch context deterministically.
    - `python3 "agents/skills/gh-work-item-implementer/scripts/fetch_context.py" <TARGET> --scope <scope> --context-dir <context_dir>`
    - `python3 "agents/skills/gh-work-item-implementer/scripts/render_context.py" <context.json> > <context.md>`
+   - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" init --context <context.json>`
 2. Build execution units from 3-level hierarchy (`Epic -> Issue -> Sub-issue`).
    - If target is an Epic: expand to `Issue units`, each with its own `Sub-issues`.
    - If target is an Issue: create one `Issue unit` with its `Sub-issues`.
@@ -48,6 +50,8 @@ Optional flags in the same line:
 4. Implement Issue units one-by-one.
    - For each Issue unit, complete Sub-issues first, then Issue-level integration.
    - Prefer assigning independent Issue units or clearly bounded Sub-issues to subagents so each unit carries its own local implementation context.
+   - At the start of each active work item, capture `WORK_ITEM_BASE_SHA=$(git rev-parse HEAD)` and move its state from `planned` to `implemented`:
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" advance --state <work_state.json> --kind <sub-issue|issue> --number <n> --status implemented --base-sha "$WORK_ITEM_BASE_SHA"`
    - After finishing a Sub-issue's implementation, do not leave it open "for later". Run the needed gate for that Sub-issue, and close it immediately once that gate is green before starting the next sibling Sub-issue.
    - If a completed Sub-issue cannot be closed at that point for any reason (permissions, policy ambiguity, GitHub/API error, uncertainty about whether closure is appropriate), stop and ask the user how to proceed.
    - Commit strategy:
@@ -58,25 +62,37 @@ Optional flags in the same line:
 5. Verification before review gate.
    - Run repository-relevant tests/lint with fresh evidence for the work item about to be closed.
    - Fix failures and rerun until clean.
-6. Review gate per completed work item.
+   - When verification is green, update the active work item to `verified`:
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" advance --state <work_state.json> --kind <sub-issue|issue> --number <n> --status verified`
+6. Checkpoint commit before review gate.
+   - Create a dedicated checkpoint commit for the active work item before any review action.
+   - Record the checkpoint commit and current `HEAD_SHA` in state:
+     - `HEAD_SHA=$(git rev-parse HEAD)`
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" advance --state <work_state.json> --kind <sub-issue|issue> --number <n> --status checkpoint_committed --head-sha "$HEAD_SHA" --commit-sha "$HEAD_SHA"`
+   - If the active work item is not committed at this point, stop instead of continuing to review or closure.
+7. Review gate per completed work item.
    - If `review=on`: run `$review-fix-loop` before each closure action.
    - Scope for `review=on`:
      - Completed Sub-issue: review/fix loop before closing that Sub-issue.
      - Issue-level integration: review/fix loop before closing the Issue.
+   - When invoking `$review-fix-loop`, scope it to the active work item with the checkpoint range:
+     - `base_sha="$WORK_ITEM_BASE_SHA"`
    - If `review=off`: skip the review gate entirely and rely on fresh verification evidence only.
-   - Do not proceed to the next sibling Sub-issue or next Issue unit until the active gate is green (`review=on`: zero findings + verification green, `review=off`: verification green).
+   - After the active review gate is green, record the final clean `HEAD_SHA`:
+     - `HEAD_SHA=$(git rev-parse HEAD)`
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" advance --state <work_state.json> --kind <sub-issue|issue> --number <n> --status review_clean --head-sha "$HEAD_SHA"`
+   - Do not proceed to the next sibling Sub-issue or next Issue unit until the active gate is green (`review=on`: zero findings + verification green + `review_clean`, `review=off`: verification green + `review_clean`).
    - If the execution skill would normally jump to branch-finish/PR options after implementation, override that default and return to this workflow first.
-7. Commit completed work items immediately after their own active gate is green.
-   - Create at least one commit dedicated to the active completed work item before closing it and before starting any other Sub-issue/Issue unit.
-   - The commit must contain only the changes for that completed Sub-issue or Issue-level integration.
-   - If review or verification produces follow-up fixes, rerun the active gate as needed and then commit the final green state.
-   - If you cannot produce that commit at the required moment, stop and ask the user instead of continuing.
 8. Close completed work items immediately after their own active gate is green and their required commit exists.
    - Determine the active work item kind before any closure command. The only closable kinds in this skill are `sub-issue` and `issue`. Treat `epic` as non-closable even though GitHub stores it as an issue.
+   - Verify closure eligibility through state before calling GitHub:
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" assert-closable --state <work_state.json> --kind <sub-issue|issue> --number <n>`
    - Close each completed Sub-issue as soon as its implementation is done and its own gate is green. Do not batch Sub-issue closure until the end of the parent Issue unit:
-     - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind sub-issue --repo <owner>/<repo> --number <sub_issue_number>`
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind sub-issue --state <work_state.json> --repo <owner>/<repo> --number <sub_issue_number>`
    - Close the active Issue as soon as its Sub-issues (if any) are already closed, its Issue-level DoD is complete, and its own gate is green:
-     - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind issue --repo <owner>/<repo> --number <issue_number>`
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind issue --state <work_state.json> --repo <owner>/<repo> --number <issue_number>`
+   - After GitHub closes the work item, persist the final `closed` state:
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" advance --state <work_state.json> --kind <sub-issue|issue> --number <n> --status closed`
    - If any work item cannot be closed at the moment it becomes eligible, stop there and ask the user for a decision instead of continuing with later work items.
    - Never close the Epic in this skill, even if all child work is complete, unless the user explicitly asks in a separate follow-up.
 9. Final report.
@@ -92,11 +108,13 @@ Optional flags in the same line:
 - Do not resume from file paths alone. Re-state the active `Issue unit`.
 - Include only:
   - Target + active `Issue unit`
+  - `work_state.json` path
   - Active work item kind (`sub-issue` or `issue`) and exact closable number
   - Short recap: problem, intended behavior, constraints
   - Acceptance criteria or DoD
   - Dependencies, blockers, assumptions
-  - Done status: implemented, verified, reviewed, committed, closed
+  - Done status: implemented, verified, checkpoint_committed, reviewed, closed
+  - `base_sha` and latest `head_sha`
   - Exact next action
 - `context.json` and `context.md` are source artifacts, not substitutes for this recap.
 - Prefer one subagent or isolated execution thread per independent unit so compression stays local.
@@ -104,21 +122,24 @@ Optional flags in the same line:
 ```md
 Target: Epic/Issue/Sub-issue ...
 Active unit: ...
+Work state: ...
 Active work item kind: sub-issue|issue (never epic here)
 Closable number: ...
 Recap: problem / intended behavior / constraints
 DoD:
 - ...
 Dependencies: ...
-Status: implemented ...; verified ...; reviewed ...; committed ...; closed ...
+Status: implemented ...; verified ...; checkpoint_committed ...; reviewed ...; closed ...
+Range: base_sha=...; head_sha=...
 Next: ...
 ```
 
 ### Commit Invariant (All Modes)
 - Minimum requirement: at least one commit per completed Issue/Sub-issue in this task.
 - `fine-grained` allows extra commits within one work item, but does not relax per-item minimum.
-- Each completed Sub-issue/Issue must have its own commit before closure and before work begins on the next sibling or next Issue unit.
-- The per-item commit should represent the final green state for that work item after verification/review fixes.
+- Each completed Sub-issue/Issue must have its own checkpoint commit before review/closure and before work begins on the next sibling or next Issue unit.
+- The per-item commit sequence may include review-fix follow-up commits, but the checkpoint commit is mandatory even when `review=off`.
+- The per-item final clean state must be recorded in `work_state.json`.
 - A single commit must not mix changes from multiple Issue units.
 
 ### Standalone Bug
@@ -130,7 +151,8 @@ Next: ...
 - `fetch_context.py` normalizes missing links to `null` or empty arrays so standalone issues are safe.
 - Implement in the current Codex session working directory.
 - Do not create/switch git branches or create/use git worktrees unless the user explicitly asks.
-- Commit timing is mandatory in this skill: do not defer a completed Sub-issue/Issue commit until "later" or batch multiple completed items into one commit.
+- `work_state.json` is the runtime source of truth for lifecycle progress; do not rely on memory alone.
+- Commit timing is mandatory in this skill: do not defer a completed Sub-issue/Issue checkpoint commit until "later" or batch multiple completed items into one commit.
 - Parent workflow owns GitHub work-item closure. Close each completed Sub-issue/Issue at the first valid opportunity defined in step 8, and do not treat generic plan/task completion or branch-finishing as a substitute.
 - If closure is blocked or ambiguous, stop and escalate to the user immediately rather than deferring closure or guessing.
-- `review=off` is a user-controlled speed/strictness tradeoff. Do not silently skip review unless the flag is explicitly set.
+- `review=off` is a user-controlled speed/strictness tradeoff. Do not silently skip review unless the flag is explicitly set, but still require `verified -> checkpoint_committed -> review_clean` state progression before closure.

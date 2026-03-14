@@ -25,7 +25,7 @@
     },
     "mode": {
       "type": "string",
-      "enum": ["epic", "issue"]
+      "enum": ["epic", "issue", "sub_issue", "standalone_issue"]
     },
     "issue": {
       "$ref": "#/$defs/issue"

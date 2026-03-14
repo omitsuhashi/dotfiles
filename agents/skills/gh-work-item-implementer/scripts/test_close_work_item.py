@@ -29,6 +29,7 @@ class CloseWorkItemTests(unittest.TestCase):
 
     def test_closes_issue(self):
         with (
+            mock.patch.object(close_work_item, "assert_closable", return_value=None) as assert_mock,
             mock.patch.object(close_work_item, "run", return_value="") as run_mock,
             contextlib.redirect_stdout(io.StringIO()),
         ):
@@ -36,6 +37,8 @@ class CloseWorkItemTests(unittest.TestCase):
                 [
                     "--kind",
                     "issue",
+                    "--state",
+                    "/tmp/work_state.json",
                     "--repo",
                     "acme/project",
                     "--number",
@@ -43,6 +46,7 @@ class CloseWorkItemTests(unittest.TestCase):
                 ]
             )
 
+        assert_mock.assert_called_once_with("/tmp/work_state.json", "issue", 11)
         run_mock.assert_called_once_with(
             [
                 "gh",
@@ -58,6 +62,7 @@ class CloseWorkItemTests(unittest.TestCase):
 
     def test_closes_sub_issue(self):
         with (
+            mock.patch.object(close_work_item, "assert_closable", return_value=None) as assert_mock,
             mock.patch.object(close_work_item, "run", return_value="") as run_mock,
             contextlib.redirect_stdout(io.StringIO()),
         ):
@@ -65,6 +70,8 @@ class CloseWorkItemTests(unittest.TestCase):
                 [
                     "--kind",
                     "sub-issue",
+                    "--state",
+                    "/tmp/work_state.json",
                     "--repo",
                     "acme/project",
                     "--number",
@@ -72,6 +79,7 @@ class CloseWorkItemTests(unittest.TestCase):
                 ]
             )
 
+        assert_mock.assert_called_once_with("/tmp/work_state.json", "sub-issue", 12)
         run_mock.assert_called_once_with(
             [
                 "gh",

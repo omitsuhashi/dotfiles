@@ -58,6 +58,7 @@ For every loop round, apply both skills explicitly:
 
 Use these defaults unless the user overrides them:
 
+- `base_sha`: unset by default; when provided, review only the active work item range `BASE_SHA..HEAD_SHA`
 - `comparison_branch`: `main` (override allowed, e.g. `release/2026-q1`)
 - `max_rounds`: 10
 - `severity_scope`: all findings (`Critical`, `Important`, `Minor`)
@@ -70,15 +71,20 @@ Use these defaults unless the user overrides them:
 ## Loop Workflow
 
 1. Prepare loop context.
+   - If the caller provides `base_sha=<sha>`, treat that as the locked starting point for the active work item and prefer range-scoped review over branch-wide review.
    - Determine `comparison_branch` (default `main`; user may override).
    - Pin `review_method` once using Method Priority above.
    - Do not switch method mid-loop unless the selected method hard-fails at runtime.
-   - Resolve `BASE_SHA` from comparison target (recommended: `git merge-base origin/<comparison_branch> HEAD`).
+   - Resolve `BASE_SHA`:
+     - If `base_sha` is provided, use it directly.
+     - Otherwise, derive it from the comparison target (recommended: `git merge-base origin/<comparison_branch> HEAD`).
    - Set current `HEAD_SHA` (`git rev-parse HEAD`).
    - Capture acceptance requirements (issue, plan, or explicit user request).
 2. Run review round `N`.
    - Execute `$requesting-code-review` contract once for the current branch range (`BASE_SHA` -> `HEAD_SHA`) using the pinned `review_method`.
-   - For `codex review`, execute with `--base <comparison_branch>` and record `BASE_SHA..HEAD_SHA` for range traceability.
+   - For `codex review`:
+     - If using branch-scoped review, execute with `--base <comparison_branch>` and record `BASE_SHA..HEAD_SHA` for range traceability.
+     - If using explicit `base_sha`, only use `codex review` when you can reproduce the intended range exactly. Otherwise switch to the deterministic Task fallback and keep the same `BASE_SHA..HEAD_SHA`.
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
@@ -103,7 +109,9 @@ Use these defaults unless the user overrides them:
    - If changes exist and checks pass, create a commit for this round (required).
    - Continue in the same existing worktree; do not recreate or switch worktrees as part of this loop.
 7. Run next review round.
-   - Recompute `HEAD_SHA` from the new commit and refresh branch diff context from `comparison_branch`.
+   - Recompute `HEAD_SHA` from the new commit.
+   - If `base_sha` is pinned, keep `BASE_SHA` fixed for the entire active work item.
+   - Otherwise refresh branch diff context from `comparison_branch`.
    - Execute the next review round unconditionally.
    - Exit only when a Stop Condition is met.
 
@@ -129,9 +137,9 @@ When stopping with unresolved findings, report:
 - Preserve existing behavior unless a finding explicitly requires behavior change.
 - Run tests after each fix set and again before each re-review.
 - Each completed fix phase must end with a commit when changes exist.
-- Re-review must be branch-based against `comparison_branch`, not per-commit-only.
+- Re-review must stay scoped to the same review baseline for the whole loop: branch-based against `comparison_branch` when `base_sha` is unset, or range-based against the pinned `BASE_SHA` when `base_sha` is set.
 - Re-review is mandatory after each committed fix round until findings are zero or another Stop Condition is met.
-- Review the committed branch state against `comparison_branch` each round.
+- Review the committed branch state against the same baseline each round; never widen a `base_sha`-scoped loop back to the whole branch.
 - Use the current existing worktree throughout; worktree recreation is out of scope.
 - Every review round must record review method (`codex review` or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
 - Every review round must output the concrete finding list; summary counts alone are not acceptable.
@@ -182,6 +190,15 @@ Rules:
 - Prefer direct reviewer output text; if unavailable, provide a saved artifact/log reference plus extracted empty checklist.
 - Final gate result must be included explicitly (`pass/fail` for `strict_mode=true`, `skipped` for `strict_mode=false`).
 - Do not finish without this block.
+
+## Active Work Item Integration
+
+When this skill is called from a parent workflow that tracks an active work item:
+
+- Accept `base_sha=<sha>` from the caller and keep it fixed until the loop ends.
+- Treat `HEAD_SHA` as the current tip for that same work item after each fix commit.
+- Do not silently fall back to whole-branch review when the caller supplied `base_sha`.
+- If the preferred review method cannot honor the requested `BASE_SHA..HEAD_SHA` range, switch to Task fallback and record that reason in the round report.
 
 ## Example Trigger Phrases
 

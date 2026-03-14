@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+from pathlib import Path
 from typing import Sequence
+
+import work_item_state
 
 DEFAULT_COMMENT = "Implemented and verified in this task."
 
@@ -32,14 +35,21 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         description="Close an issue or sub-issue while forbidding Epic closure."
     )
     parser.add_argument("--kind", choices=["issue", "sub-issue"], required=True)
+    parser.add_argument("--state", required=True)
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--number", required=True, type=int)
     parser.add_argument("--comment", default=DEFAULT_COMMENT)
     return parser.parse_args(argv)
 
 
+def assert_closable(state_path: str, kind: str, number: int) -> None:
+    payload = work_item_state.load_state(Path(state_path))
+    work_item_state.assert_closable(payload, kind, number)
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
+    assert_closable(args.state, args.kind, args.number)
     output = run(
         [
             "gh",
