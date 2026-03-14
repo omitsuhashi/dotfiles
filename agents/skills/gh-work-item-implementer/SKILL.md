@@ -22,19 +22,35 @@ Optional flags in the same line:
 - `<context_dir>/<owner>-<repo>#<num>/context.json`
 - `<context_dir>/<owner>-<repo>#<num>/context.md`
 - `<context_dir>/<owner>-<repo>#<num>/work_state.json`
+- `<context_dir>/<owner>-<repo>#<num>/handoff.json`
+- `<context_dir>/<owner>-<repo>#<num>/handoff.md`
 
 ## REQUIRED SUPER_POWERS (in order)
 1. `superpowers:writing-plans`
-2. `superpowers:subagent-driven-development` (prefer for large Epics or any independent Issue units to keep context local to each unit and reduce compression risk) or `superpowers:executing-plans` (if tightly coupled)
+2. `superpowers:subagent-driven-development` (default when there is more than one independent Issue/Sub-issue unit; keep context local to each unit and minimize compression risk) or `superpowers:executing-plans` (allowed only when there is a single tightly coupled unit and batch execution is safer)
 3. `$review-fix-loop` (required when `review=on`; skip entirely when `review=off`)
 4. `superpowers:verification-before-completion`
 5. `superpowers:finishing-a-development-branch` (optional, and only after completed Sub-issues/Issues are closed and the user asks to merge/PR/cleanup)
+
+## Autonomy Contract
+- Default operating mode is `continue-unless-blocked`.
+- Do not stop after each task, each batch, or each completed work item just to report progress. Continue directly to the next eligible work item.
+- Return control to the user only when:
+  - Requirements or issue hierarchy are contradictory.
+  - The next action is irreversible or meaningfully risky.
+  - Permissions, authentication, or repository policy block execution.
+  - GitHub closure eligibility is ambiguous.
+  - Verification/review fails repeatedly and the workflow cannot make forward progress.
+  - All scoped work items are completed and the final report is ready.
+- If an execution skill normally pauses between tasks or batches, override that behavior inside this workflow. Parent workflow regains control only on a blocker or at full completion.
+- Every time the active work item changes, or its status/DoD/blocker state changes, refresh both `handoff.json` and `handoff.md` before continuing.
 
 ## Strict Workflow
 1. Fetch context deterministically.
    - `python3 "agents/skills/gh-work-item-implementer/scripts/fetch_context.py" <TARGET> --scope <scope> --context-dir <context_dir>`
    - `python3 "agents/skills/gh-work-item-implementer/scripts/render_context.py" <context.json> > <context.md>`
    - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" init --context <context.json>`
+   - `python3 "agents/skills/gh-work-item-implementer/scripts/render_handoff.py" --context <context.json> --state <work_state.json> --json-out <handoff.json> --markdown-out <handoff.md>`
 2. Build execution units from 3-level hierarchy (`Epic -> Issue -> Sub-issue`).
    - If target is an Epic: expand to `Issue units`, each with its own `Sub-issues`.
    - If target is an Issue: create one `Issue unit` with its `Sub-issues`.
@@ -45,13 +61,19 @@ Optional flags in the same line:
 3. Define DoD in chat for each Issue unit.
    - Write a short checklist from acceptance criteria.
    - If criteria are missing, infer minimum viable acceptance and mark assumptions.
+   - Persist the active unit recap before implementation:
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" annotate --state <work_state.json> --kind <sub-issue|issue> --number <n> --objective "<objective>" --constraint "<constraint>" --acceptance-criterion "<criterion>" --assumption "<assumption>" --dependency "<dependency>" --next-action "<next step>"`
    - Restate the Issue unit in chat before implementation: objective, constraints, acceptance criteria, dependencies, and any parent/child scope that matters to the current unit.
    - If the issue body is long, compress it into a short implementation-oriented recap instead of pasting it verbatim.
+   - Refresh handoff artifacts immediately after annotation so the next subagent/session can resume from them alone.
 4. Implement Issue units one-by-one.
    - For each Issue unit, complete Sub-issues first, then Issue-level integration.
    - Prefer assigning independent Issue units or clearly bounded Sub-issues to subagents so each unit carries its own local implementation context.
+   - New subagents or new sessions should read `handoff.md` first and only then load the minimum repo files needed for the active item. `context.md` is background context, not the primary restart artifact.
    - At the start of each active work item, capture `WORK_ITEM_BASE_SHA=$(git rev-parse HEAD)` and move its state from `planned` to `implemented`:
      - `python3 "agents/skills/gh-work-item-implementer/scripts/work_item_state.py" advance --state <work_state.json> --kind <sub-issue|issue> --number <n> --status implemented --base-sha "$WORK_ITEM_BASE_SHA"`
+   - After each status transition or blocker update, regenerate handoff artifacts:
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/render_handoff.py" --context <context.json> --state <work_state.json> --json-out <handoff.json> --markdown-out <handoff.md>`
    - After finishing a Sub-issue's implementation, do not leave it open "for later". Run the needed gate for that Sub-issue, and close it immediately once that gate is green before starting the next sibling Sub-issue.
    - If a completed Sub-issue cannot be closed at that point for any reason (permissions, policy ambiguity, GitHub/API error, uncertainty about whether closure is appropriate), stop and ask the user how to proceed.
    - Commit strategy:
@@ -100,20 +122,21 @@ Optional flags in the same line:
    - Commits created for each completed Sub-issue/Issue
    - Tests/lint run and results
    - Review-gate evidence (clean round + final gate result) when `review=on`, or explicit `review skipped by flag` note when `review=off`
-   - Assumptions and follow-ups
+   - Assumptions, blockers encountered, and the final `handoff` location used during execution
 10. Optional branch finishing.
    - Only after step 9, and only if the user asks to merge/PR/cleanup, use `superpowers:finishing-a-development-branch`.
 
 ## Context Compression Handoff
 - Do not resume from file paths alone. Re-state the active `Issue unit`.
+- `handoff.json` and `handoff.md` are mandatory runtime artifacts, not optional notes.
+- Prefer `handoff.md` as the only restart prompt input plus the minimum repo files needed for the active item.
 - Include only:
   - Target + active `Issue unit`
   - `work_state.json` path
   - Active work item kind (`sub-issue` or `issue`) and exact closable number
-  - Short recap: problem, intended behavior, constraints
-  - Acceptance criteria or DoD
-  - Dependencies, blockers, assumptions
-  - Done status: implemented, verified, checkpoint_committed, reviewed, closed
+  - Objective, constraints, acceptance criteria, assumptions, dependencies
+  - Verification summary and review summary when present
+  - Done status: implemented, verified, checkpoint_committed, review_clean, closed
   - `base_sha` and latest `head_sha`
   - Exact next action
 - `context.json` and `context.md` are source artifacts, not substitutes for this recap.
@@ -125,11 +148,18 @@ Active unit: ...
 Work state: ...
 Active work item kind: sub-issue|issue (never epic here)
 Closable number: ...
-Recap: problem / intended behavior / constraints
+Objective: ...
+Constraints:
+- ...
 DoD:
 - ...
-Dependencies: ...
-Status: implemented ...; verified ...; checkpoint_committed ...; reviewed ...; closed ...
+Assumptions:
+- ...
+Dependencies:
+- ...
+Status: implemented ...; verified ...; checkpoint_committed ...; review_clean ...; closed ...
+Verification: ...
+Review: ...
 Range: base_sha=...; head_sha=...
 Next: ...
 ```
@@ -156,3 +186,4 @@ Next: ...
 - Parent workflow owns GitHub work-item closure. Close each completed Sub-issue/Issue at the first valid opportunity defined in step 8, and do not treat generic plan/task completion or branch-finishing as a substitute.
 - If closure is blocked or ambiguous, stop and escalate to the user immediately rather than deferring closure or guessing.
 - `review=off` is a user-controlled speed/strictness tradeoff. Do not silently skip review unless the flag is explicitly set, but still require `verified -> checkpoint_committed -> review_clean` state progression before closure.
+- Long-running execution should assume chat context is disposable. The persistent source of resume truth is `work_state.json` plus the latest `handoff.json` / `handoff.md`.

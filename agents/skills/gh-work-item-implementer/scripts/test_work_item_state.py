@@ -145,6 +145,60 @@ class WorkItemStateTests(unittest.TestCase):
             [("sub-issue", 12), ("sub-issue", 13), ("issue", 11)],
         )
         self.assertEqual(payload["items"][0]["status"], "planned")
+        self.assertEqual(payload["items"][0]["objective"], "")
+        self.assertEqual(payload["items"][0]["constraints"], [])
+        self.assertEqual(payload["items"][0]["acceptance_criteria"], [])
+        self.assertEqual(payload["items"][0]["assumptions"], [])
+        self.assertEqual(payload["items"][0]["dependencies"], [])
+        self.assertEqual(payload["items"][0]["next_action"], "")
+        self.assertEqual(payload["items"][0]["verification_summary"], "")
+        self.assertEqual(payload["items"][0]["review_summary"], "")
+        self.assertIsInstance(payload["items"][0]["updated_at"], str)
+
+    def test_annotate_updates_resume_fields(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = self.init_state(tmpdir)
+            stdout = self.run_main(
+                [
+                    "annotate",
+                    "--state",
+                    state_path,
+                    "--kind",
+                    "sub-issue",
+                    "--number",
+                    "12",
+                    "--objective",
+                    "Add restart-safe handoff output",
+                    "--constraint",
+                    "Do not weaken review gate",
+                    "--acceptance-criterion",
+                    "handoff.md is enough to resume",
+                    "--assumption",
+                    "review loop remains enabled",
+                    "--dependency",
+                    "issue #11 integration",
+                    "--next-action",
+                    "Generate handoff before implementation",
+                    "--verification-summary",
+                    "Targeted tests pending",
+                    "--review-summary",
+                    "No review yet",
+                ]
+            )
+            payload = json.loads(stdout)
+
+        self.assertEqual(payload["objective"], "Add restart-safe handoff output")
+        self.assertEqual(payload["constraints"], ["Do not weaken review gate"])
+        self.assertEqual(
+            payload["acceptance_criteria"],
+            ["handoff.md is enough to resume"],
+        )
+        self.assertEqual(payload["assumptions"], ["review loop remains enabled"])
+        self.assertEqual(payload["dependencies"], ["issue #11 integration"])
+        self.assertEqual(payload["next_action"], "Generate handoff before implementation")
+        self.assertEqual(payload["verification_summary"], "Targeted tests pending")
+        self.assertEqual(payload["review_summary"], "No review yet")
+        self.assertIsInstance(payload["updated_at"], str)
 
     def test_show_active_returns_first_non_closed_item(self):
         with tempfile.TemporaryDirectory() as tmpdir:

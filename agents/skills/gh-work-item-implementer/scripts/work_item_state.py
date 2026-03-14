@@ -18,6 +18,22 @@ STATUSES = [
     "closed",
 ]
 STATUS_INDEX = {name: index for index, name in enumerate(STATUSES)}
+ANNOTATION_LIST_FIELDS = (
+    "constraints",
+    "acceptance_criteria",
+    "assumptions",
+    "dependencies",
+)
+ANNOTATION_SCALAR_FIELDS = (
+    "objective",
+    "next_action",
+    "verification_summary",
+    "review_summary",
+)
+
+
+def utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat()
 
 
 def load_json(path: Path) -> Dict[str, Any]:
@@ -40,6 +56,7 @@ def build_items(context: Dict[str, Any]) -> List[Dict[str, Any]]:
     issue_units = hierarchy.get("issues") or []
     epic = hierarchy.get("epic")
     items: List[Dict[str, Any]] = []
+    now = utc_now_iso()
 
     for unit in issue_units:
         issue = unit.get("issue") or {}
@@ -56,6 +73,15 @@ def build_items(context: Dict[str, Any]) -> List[Dict[str, Any]]:
                     "head_sha": None,
                     "commit_shas": [],
                     "closed_at": None,
+                    "objective": "",
+                    "constraints": [],
+                    "acceptance_criteria": [],
+                    "assumptions": [],
+                    "dependencies": [],
+                    "next_action": "",
+                    "verification_summary": "",
+                    "review_summary": "",
+                    "updated_at": now,
                 }
             )
         items.append(
@@ -71,6 +97,15 @@ def build_items(context: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "head_sha": None,
                 "commit_shas": [],
                 "closed_at": None,
+                "objective": "",
+                "constraints": [],
+                "acceptance_criteria": [],
+                "assumptions": [],
+                "dependencies": [],
+                "next_action": "",
+                "verification_summary": "",
+                "review_summary": "",
+                "updated_at": now,
             }
         )
     return items
@@ -139,7 +174,7 @@ def update_item_from_args(item: Dict[str, Any], args: argparse.Namespace) -> Non
             raise RuntimeError("review_clean requires --head-sha or existing head_sha")
 
     if next_status == "closed":
-        item["closed_at"] = args.closed_at or datetime.now(UTC).isoformat()
+        item["closed_at"] = args.closed_at or utc_now_iso()
 
     if args.base_sha and not item.get("base_sha"):
         item["base_sha"] = args.base_sha
@@ -151,6 +186,26 @@ def update_item_from_args(item: Dict[str, Any], args: argparse.Namespace) -> Non
                 item["commit_shas"].append(sha)
 
     item["status"] = next_status
+    item["updated_at"] = utc_now_iso()
+
+
+def annotate_item_from_args(item: Dict[str, Any], args: argparse.Namespace) -> None:
+    changed = False
+
+    for field in ANNOTATION_SCALAR_FIELDS:
+        value = getattr(args, field, None)
+        if value is not None:
+            item[field] = value
+            changed = True
+
+    for field in ANNOTATION_LIST_FIELDS:
+        value = getattr(args, field, None)
+        if value is not None:
+            item[field] = value
+            changed = True
+
+    if changed:
+        item["updated_at"] = utc_now_iso()
 
 
 def show_active(payload: Dict[str, Any]) -> Dict[str, Any] | None:
@@ -212,6 +267,23 @@ def build_parser() -> argparse.ArgumentParser:
     advance_parser.add_argument("--commit-sha", action="append", default=[])
     advance_parser.add_argument("--closed-at")
 
+    annotate_parser = subparsers.add_parser("annotate")
+    annotate_parser.add_argument("--state", required=True)
+    annotate_parser.add_argument("--kind", choices=["issue", "sub-issue"], required=True)
+    annotate_parser.add_argument("--number", type=int, required=True)
+    annotate_parser.add_argument("--objective")
+    annotate_parser.add_argument("--constraint", dest="constraints", action="append")
+    annotate_parser.add_argument(
+        "--acceptance-criterion",
+        dest="acceptance_criteria",
+        action="append",
+    )
+    annotate_parser.add_argument("--assumption", dest="assumptions", action="append")
+    annotate_parser.add_argument("--dependency", dest="dependencies", action="append")
+    annotate_parser.add_argument("--next-action")
+    annotate_parser.add_argument("--verification-summary")
+    annotate_parser.add_argument("--review-summary")
+
     assert_parser = subparsers.add_parser("assert-closable")
     assert_parser.add_argument(
         "--kind", choices=["epic", "issue", "sub-issue"], required=True
@@ -239,6 +311,13 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.command == "advance":
         item = find_item(payload, args.kind, args.number)
         update_item_from_args(item, args)
+        write_json(Path(args.state), payload)
+        print(json.dumps(item, ensure_ascii=False))
+        return
+
+    if args.command == "annotate":
+        item = find_item(payload, args.kind, args.number)
+        annotate_item_from_args(item, args)
         write_json(Path(args.state), payload)
         print(json.dumps(item, ensure_ascii=False))
         return
