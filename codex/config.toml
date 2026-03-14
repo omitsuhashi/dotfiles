@@ -1,7 +1,7 @@
 hide_agent_reasoning = true
 network_access = true
 model = "gpt-5.4"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 web_search_request = true
 profile = "sandbox"
 personality = "pragmatic"
