@@ -66,10 +66,11 @@ Optional flags in the same line:
    - Do not proceed to the next sibling Sub-issue or next Issue unit until the active gate is green (`review=on`: zero findings + verification green, `review=off`: verification green).
    - If the execution skill would normally jump to branch-finish/PR options after implementation, override that default and return to this workflow first.
 7. Close completed work items immediately after their own active gate is green.
+   - Determine the active work item kind before any closure command. The only closable kinds in this skill are `sub-issue` and `issue`. Treat `epic` as non-closable even though GitHub stores it as an issue.
    - Close each completed Sub-issue as soon as its implementation is done and its own gate is green. Do not batch Sub-issue closure until the end of the parent Issue unit:
-     - `gh issue close <sub_issue_number> --repo <owner>/<repo> --comment "Implemented and verified in this task."`
-   - Close the Issue as soon as its Sub-issues (if any) are already closed, its Issue-level DoD is complete, and its own gate is green:
-     - `gh issue close <issue_number> --repo <owner>/<repo> --comment "Implemented and verified in this task."`
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind sub-issue --repo <owner>/<repo> --number <sub_issue_number>`
+   - Close the active Issue as soon as its Sub-issues (if any) are already closed, its Issue-level DoD is complete, and its own gate is green:
+     - `python3 "agents/skills/gh-work-item-implementer/scripts/close_work_item.py" --kind issue --repo <owner>/<repo> --number <issue_number>`
    - If any work item cannot be closed at the moment it becomes eligible, stop there and ask the user for a decision instead of continuing with later work items.
    - Never close the Epic in this skill, even if all child work is complete, unless the user explicitly asks in a separate follow-up.
 8. Final report.
@@ -84,6 +85,7 @@ Optional flags in the same line:
 - Do not resume from file paths alone. Re-state the active `Issue unit`.
 - Include only:
   - Target + active `Issue unit`
+  - Active work item kind (`sub-issue` or `issue`) and exact closable number
   - Short recap: problem, intended behavior, constraints
   - Acceptance criteria or DoD
   - Dependencies, blockers, assumptions
@@ -95,6 +97,8 @@ Optional flags in the same line:
 ```md
 Target: Epic/Issue/Sub-issue ...
 Active unit: ...
+Active work item kind: sub-issue|issue (never epic here)
+Closable number: ...
 Recap: problem / intended behavior / constraints
 DoD:
 - ...
