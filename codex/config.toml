@@ -12,8 +12,8 @@ network_access = true
 [profiles.sandbox]
 sandbox_mode    = "workspace-write"
 approval_policy = "never"
-model = "gpt-5.3-codex"
-model_reasoning_effort = "xhigh"
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
 personality = "pragmatic"
 
 [mcp_servers.context7]
@@ -108,6 +108,12 @@ trust_level = "trusted"
 [projects."/Users/omitsuhashi/dotfiles"]
 trust_level = "trusted"
 
+[projects."/Users/omitsuhashi/repos/the3/smartra/docs"]
+trust_level = "trusted"
+
+[projects."/Users/omitsuhashi"]
+trust_level = "trusted"
+
 [notice.model_migrations]
 "gpt-5.1-codex-max" = "gpt-5.2-codex"
 "gpt-5.2-codex" = "gpt-5.3-codex"
@@ -121,3 +127,4 @@ apps = true
 steer = true
 multi_agent = true
 prevent_idle_sleep = true
+guardian_approval = true
