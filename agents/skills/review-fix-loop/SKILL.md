@@ -11,7 +11,7 @@ Run a strict "review -> fix -> review" cycle without stopping after the first pa
 Continue until no actionable findings remain or a hard stop condition is met.
 Run this in two phases:
 1. Loop phase: run review rounds using `$requesting-code-review`.
-2. Strict final gate (optional): when loop findings become zero and `strict_mode=true`, run one explicit review with the pinned method (prefer `codex review`) as final clean confirmation.
+2. Strict final gate (optional): when loop findings become zero and `strict_mode=true`, run one extra `$requesting-code-review` round against the same baseline as final clean confirmation.
 
 **REQUIRED SUB-SKILL:** Use `$requesting-code-review` for review rubric/context quality.
 **REQUIRED SUB-SKILL:** Use `$receiving-code-review` to evaluate and apply feedback rigorously.
@@ -19,20 +19,9 @@ Run this in two phases:
 
 ## Review Invocation Contract
 
-Choose review method once at Round 1 and keep it fixed for the entire loop, including final gate.
-Do not improvise per round.
-This skill does not invoke slash-style review entrypoints.
-
-### Method Priority (deterministic)
-
-1. Use `$requesting-code-review` flow for every loop round.
-2. Inside that flow, use `codex review` + `requesting-code-review/code-reviewer.md` template when available.
-3. If `codex review` is unavailable, use Task fallback with `superpowers:code-reviewer` and the same template.
-4. If pinned method hard-fails at runtime, move to next fallback in this same priority order and record reason.
-
-`codex review` availability check (recommended at Round 1):
-- `command -v codex`
-- `codex review --help`
+Use `$requesting-code-review` exactly as the review acquisition workflow for every round.
+Do not bypass it with direct `codex review` calls or any other ad hoc review command.
+Keep the review baseline fixed for the entire loop.
 
 ## Sub-Skill Contract
 
@@ -40,17 +29,15 @@ For every loop round, apply both skills explicitly:
 
 1. Review acquisition must follow `$requesting-code-review`.
    - Get SHAs (`BASE_SHA`, `HEAD_SHA`).
-   - Run the pinned method with `requesting-code-review/code-reviewer.md` template:
-     - Preferred: `cat requesting-code-review/code-reviewer.md | codex review --base <comparison_branch> -`
-     - Fallback: Task with `superpowers:code-reviewer` + same template.
-   - If template file is unavailable in the runtime, pass the same rubric as inline prompt text and record that fallback.
-   - Save reviewer artifact (stdout summary or log path) every round.
+   - Use the review path defined by `$requesting-code-review` and its `code-reviewer.md` template.
+   - If the template file is unavailable in the runtime, pass the same rubric as inline prompt text and record that fallback.
+   - Save reviewer artifact (subagent output summary, stdout summary, or log path) every round.
 2. Feedback handling and fixes must follow `$receiving-code-review`.
    - Use the full sequence: `READ -> UNDERSTAND -> VERIFY -> EVALUATE -> RESPOND -> IMPLEMENT`.
    - Do not apply suggestions blindly.
    - If any feedback item is unclear, stop and clarify before implementation.
 3. When a loop round returns zero findings:
-   - If `strict_mode=true`, run final gate once more with the pinned method before declaring clean.
+   - If `strict_mode=true`, run final gate once more with `$requesting-code-review` against the same baseline before declaring clean.
    - If `strict_mode=false`, skip final gate and continue to final verification.
    - Treat strict final gate findings as normal findings (fix and continue loop).
 
@@ -64,7 +51,6 @@ Use these defaults unless the user overrides them:
 - `severity_scope`: all findings (`Critical`, `Important`, `Minor`)
 - `stop_on_repeated_findings`: stop when the same unresolved finding repeats for 2 consecutive rounds
 - `commit_after_fix`: required (create a commit after each completed fix phase that has changes)
-- `review_method_preference`: `codex review -> Task(superpowers:code-reviewer)`
 - `strict_mode`: false (`true` requires one extra final gate review after a clean round)
 - `autonomy`: continue looping without asking after each round; ask only for blockers/ambiguity
 
@@ -73,18 +59,13 @@ Use these defaults unless the user overrides them:
 1. Prepare loop context.
    - If the caller provides `base_sha=<sha>`, treat that as the locked starting point for the active work item and prefer range-scoped review over branch-wide review.
    - Determine `comparison_branch` (default `main`; user may override).
-   - Pin `review_method` once using Method Priority above.
-   - Do not switch method mid-loop unless the selected method hard-fails at runtime.
    - Resolve `BASE_SHA`:
      - If `base_sha` is provided, use it directly.
      - Otherwise, derive it from the comparison target (recommended: `git merge-base origin/<comparison_branch> HEAD`).
    - Set current `HEAD_SHA` (`git rev-parse HEAD`).
    - Capture acceptance requirements (issue, plan, or explicit user request).
 2. Run review round `N`.
-   - Execute `$requesting-code-review` contract once for the current branch range (`BASE_SHA` -> `HEAD_SHA`) using the pinned `review_method`.
-   - For `codex review`:
-     - If using branch-scoped review, execute with `--base <comparison_branch>` and record `BASE_SHA..HEAD_SHA` for range traceability.
-     - If using explicit `base_sha`, only use `codex review` when you can reproduce the intended range exactly. Otherwise switch to the deterministic Task fallback and keep the same `BASE_SHA..HEAD_SHA`.
+   - Execute `$requesting-code-review` once for the current branch range (`BASE_SHA` -> `HEAD_SHA`).
    - Normalize findings into a checklist with unique IDs:
      - `R<N>-C#` for Critical
      - `R<N>-I#` for Important
@@ -93,7 +74,7 @@ Use these defaults unless the user overrides them:
 3. Decide continuation.
    - If checklist is empty: still publish this round report with `Findings detail: none`.
    - If checklist is empty and `strict_mode=false`: go to final verification.
-   - If checklist is empty and `strict_mode=true`: run final gate with pinned method.
+   - If checklist is empty and `strict_mode=true`: run final gate with one extra `$requesting-code-review` round.
    - If strict final gate returns no findings: go to final verification.
    - If strict final gate returns findings: add them to next round checklist and continue fix phase.
    - If checklist has findings: continue to fix phase.
@@ -141,10 +122,10 @@ When stopping with unresolved findings, report:
 - Re-review is mandatory after each committed fix round until findings are zero or another Stop Condition is met.
 - Review the committed branch state against the same baseline each round; never widen a `base_sha`-scoped loop back to the whole branch.
 - Use the current existing worktree throughout; worktree recreation is out of scope.
-- Every review round must record review method (`codex review` or Task fallback) and range (`BASE_SHA..HEAD_SHA`).
+- Every review round must record the review workflow actually used through `$requesting-code-review` and the range (`BASE_SHA..HEAD_SHA`).
 - Every review round must output the concrete finding list; summary counts alone are not acceptable.
 - If a round has zero findings, output `Findings detail: none` explicitly.
-- When round findings are zero and `strict_mode=true`, final gate with pinned review method is mandatory before declaring clean.
+- When round findings are zero and `strict_mode=true`, one extra `$requesting-code-review` round against the same baseline is mandatory before declaring clean.
 - Never declare "done" without clean review evidence and verification evidence. Include strict final gate evidence only when `strict_mode=true`.
 
 ## Round Report Format
@@ -154,13 +135,13 @@ Use this compact structure every round:
 ```markdown
 Round N/5
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Review method: <`codex review` | Task(superpowers:code-reviewer)>
+- Review workflow: <$requesting-code-review result path used this round>
 - Reviewer artifact: <review output summary or saved log path>
 - Fix commit: <hash/none>
 - Worktree: existing worktree (no recreation)
 - Findings: Critical=<n>, Important=<n>, Minor=<n>
 - Findings detail: <for each finding -> ID | severity | location | summary | status(open/fixed/deferred); use `none` when empty>
-- Final gate: <pending/not-run/pass/fail/skipped(strict_mode=false) + method + short reason>
+- Final gate: <pending/not-run/pass/fail/skipped(strict_mode=false) + workflow + short reason>
 - Fixed in this round: <ID list>
 - Verification run: <commands>
 - Verification result: <pass/fail + short reason>
@@ -175,10 +156,10 @@ When the loop exits because findings are zero, include this evidence block in th
 Final Clean Evidence
 - Clean round: <Round N>
 - Review range: <BASE_SHA>..<HEAD_SHA>
-- Loop clean method: <`codex review` | Task(superpowers:code-reviewer)>
+- Loop clean workflow: <$requesting-code-review result path used for the clean round>
 - Loop clean evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result>
 - Final gate: <pass/fail/skipped(strict_mode=false)>
-- Final gate method: <`codex review` | Task(superpowers:code-reviewer) | n/a>
+- Final gate workflow: <$requesting-code-review result path | n/a>
 - Final gate evidence: <verbatim short line or artifact reference showing "no findings" / empty findings result | n/a when skipped>
 - Normalized checklist: [] (0 items)
 - Verification run: <commands>
@@ -198,7 +179,7 @@ When this skill is called from a parent workflow that tracks an active work item
 - Accept `base_sha=<sha>` from the caller and keep it fixed until the loop ends.
 - Treat `HEAD_SHA` as the current tip for that same work item after each fix commit.
 - Do not silently fall back to whole-branch review when the caller supplied `base_sha`.
-- If the preferred review method cannot honor the requested `BASE_SHA..HEAD_SHA` range, switch to Task fallback and record that reason in the round report.
+- If `$requesting-code-review` cannot honor the requested `BASE_SHA..HEAD_SHA` range, stop and report the constraint instead of widening scope silently.
 
 ## Example Trigger Phrases
 
