@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Work Item Implementer"
+  short_description: "Implement GitHub work items end-to-end with hierarchy, review, and closure guards"
+  default_prompt: "Use $gh-work-item-implementer. Accept one target issue reference (URL, owner/repo#number, or #number). Default to mode=auto scope=open review=on commit=per-issue context_dir=./.work-items. Fetch hierarchy and dependencies, prefer superpowers:subagent-driven-development when there is more than one independent Issue/Sub-issue unit, keep handoff artifacts fresh, require verification and $review-fix-loop before closure, close only sub-issues/issues, and never close an epic unless the user explicitly asks in a separate follow-up."
