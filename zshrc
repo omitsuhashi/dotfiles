@@ -33,3 +33,13 @@ esac
 # Added by Antigravity
 export PATH="/Users/omitsuhashi/.antigravity/antigravity/bin:$PATH"
 
+# Remove all git worktrees except current working directory.
+wt-clean() {
+  git worktree list --porcelain \
+    | awk '/^worktree /{print $2}' \
+    | while IFS= read -r wt; do
+        if [ "$wt" != "$(pwd)" ]; then
+          git worktree remove -f "$wt"
+        fi
+      done
+}
