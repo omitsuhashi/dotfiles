@@ -14,7 +14,7 @@ Accept exactly one target:
 Optional flags in the same line:
 - `mode=auto|epic|issue|sub-issue` (default `auto`)
 - `scope=open|all` (default `open`)
-- `review=on|off` (default `on`; `off` skips `$review-fix-loop`)
+- `review=on|off` (default `off`; `off` skips `$review-fix-loop`)
 - `commit=per-issue|fine-grained` (default `per-issue`; both enforce at least one commit per completed Sub-issue and per completed Issue-level integration)
 - `context_dir=<path>` (default `./.work-items`)
 
