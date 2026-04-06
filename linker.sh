@@ -12,3 +12,13 @@ ln -sf ~/dotfiles/git/gitconfig ~/.gitconfig
 ln -sf ~/dotfiles/git/gitignore_global ~/.gitignore_global
 ln -sf ~/dotfiles/git/gitmessage ~/.gitmessage
 ln -sf ~/dotfiles/agents/AGENTS.md ~/.codex/AGENTS.md
+
+if [ ! -e ~/scripts ]; then
+  mkdir ~/scripts
+fi
+
+for script in ~/dotfiles/scripts/*; do
+  if [ -f "$script" ]; then
+    ln -sf "$script" ~/scripts/"$(basename "$script")"
+  fi
+done

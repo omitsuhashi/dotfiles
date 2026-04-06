@@ -3,6 +3,10 @@ version = 1
 [git]
 hooks_path = ".githooks"
 
+[worktree]
+default_root = "~/.codex/worktrees/backend"
+default_root_env = ["CODEX_WORKTREE_ROOT"]
+
 [repos.docs]
 repo_env = ["CODEX_DOCS_REPO", "SMARTRA_DOCS_REPO"]
 discover = [".docs", "../docs", "docs"]

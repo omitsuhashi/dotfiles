@@ -41,6 +41,11 @@ def create_primary_worktree(
     dry_run: bool = False,
 ) -> CreateWorktreeResult:
     git = git or SubprocessGitRunner()
+    if not config.worktree.configured:
+        raise CodexWorktreeError(
+            "create-worktree requires a [worktree] section in the config; "
+            "without it, primary worktree management is treated as external"
+        )
     base_root = resolve_primary_worktree_root(
         root_dir=root_dir,
         repo_name=root_dir.name,

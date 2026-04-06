@@ -18,6 +18,7 @@ class GitConfig:
 
 @dataclass(frozen=True)
 class WorktreeConfig:
+    configured: bool = False
     default_root: str | None = None
     default_root_env: list[str] = field(default_factory=list)
 
@@ -56,10 +57,11 @@ class AppConfig:
 
 def parse_config(path: Path) -> AppConfig:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
+    worktree_data = data.get("worktree", {})
     config = AppConfig(
         version=_require_int(data, "version"),
         git=_parse_git_config(data.get("git", {})),
-        worktree=_parse_worktree_config(data.get("worktree", {})),
+        worktree=_parse_worktree_config(worktree_data, configured="worktree" in data),
         repos=_parse_repos(data.get("repos", {})),
         links=_parse_links(data.get("links", [])),
         steps=_parse_steps(data.get("steps", [])),
@@ -122,13 +124,17 @@ def _parse_git_config(data: Any) -> GitConfig:
     return GitConfig(hooks_path=hooks_path)
 
 
-def _parse_worktree_config(data: Any) -> WorktreeConfig:
+def _parse_worktree_config(data: Any, *, configured: bool) -> WorktreeConfig:
     _require_table(data, "worktree")
     default_root = data.get("default_root")
     default_root_env = _require_str_list(data.get("default_root_env", []), "worktree.default_root_env")
     if default_root is not None and not isinstance(default_root, str):
         raise ConfigError("worktree.default_root must be a string")
-    return WorktreeConfig(default_root=default_root, default_root_env=default_root_env)
+    return WorktreeConfig(
+        configured=configured,
+        default_root=default_root,
+        default_root_env=default_root_env,
+    )
 
 
 def _parse_repos(data: Any) -> dict[str, RepoConfig]:

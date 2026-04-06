@@ -3,9 +3,10 @@ import unittest
 from pathlib import Path
 
 from codex_worktree.branching import select_branch_name
-from codex_worktree.config import WorktreeConfig
+from codex_worktree.config import AppConfig, WorktreeConfig
+from codex_worktree.create_worktree import create_primary_worktree
 from codex_worktree.create_worktree import resolve_primary_worktree_root
-from codex_worktree.errors import GitCommandError
+from codex_worktree.errors import CodexWorktreeError, GitCommandError
 from codex_worktree.git_ops import GitRunner, GitResult
 
 
@@ -87,6 +88,24 @@ class CreateWorktreeTests(unittest.TestCase):
             )
 
             self.assertEqual(resolved, (root_dir.parent / ".worktrees" / "backend").resolve())
+
+    def test_create_worktree_requires_worktree_section(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root_dir = Path(tmp) / "backend"
+            root_dir.mkdir()
+
+            with self.assertRaises(CodexWorktreeError) as ctx:
+                create_primary_worktree(
+                    root_dir=root_dir,
+                    name="feature-x",
+                    config=AppConfig(version=1),
+                    worktree_root=None,
+                    env={},
+                    git=FakeGitRunner(),
+                    dry_run=True,
+                )
+
+            self.assertIn("[worktree]", str(ctx.exception))
 
     def test_git_failure_is_propagated(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

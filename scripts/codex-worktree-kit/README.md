@@ -6,7 +6,7 @@
 
 この utility は次を担当します。
 
-- main repo の worktree 作成
+- main repo の worktree 作成（任意）
 - 関連 repo の linked worktree 作成
 - consumer repo 配下への symlink / alias 作成
 - consumer repo 固有の post-setup command 実行
@@ -20,6 +20,7 @@
 - repo 固有の環境変数名は `repos.<name>.repo_env` で追加できる
 - `.docs` のような alias は `[[links]]` で宣言する
 - linked worktree の branch 方針は `branch_strategy` で切り替える
+- `[worktree]` を省略すると primary worktree は外部管理として扱う
 - `--dry-run` で副作用なしの plan 確認ができる
 
 ## 比較
@@ -36,7 +37,7 @@
 2. utility repo root で `uv sync` を実行して `.venv` を作る
 3. consumer repo に `.codex/worktree.toml` を置く
 4. consumer repo には薄い bridge script だけを置く
-5. `create-worktree` で main worktree を作る
+5. Codex App で `Worktree` を選んで main worktree を作る
 6. 生成された worktree 内で `bootstrap` を実行する
 
 初回セットアップ:
@@ -62,7 +63,7 @@ KIT_DIR="${CODEX_WORKTREE_KIT:-$HOME/src/codex-worktree-kit}"
   --config "$ROOT_DIR/.codex/worktree.toml"
 ```
 
-`create-worktree.sh` 相当の bridge 例:
+primary worktree もこの utility で作りたい repo 向けに、`create-worktree.sh` 相当の bridge も置けます。
 
 ```bash
 #!/usr/bin/env bash
@@ -85,10 +86,6 @@ version = 1
 
 [git]
 hooks_path = ".githooks"
-
-[worktree]
-default_root = "~/.codex/worktrees/backend"
-default_root_env = ["CODEX_WORKTREE_ROOT"]
 
 [repos.docs]
 repo_env = ["CODEX_DOCS_REPO", "SMARTRA_DOCS_REPO"]
@@ -116,6 +113,7 @@ run = ["make", "docs-catalog"]
 
 - `version`: 現在は `1` のみ対応
 - `[git].hooks_path`: `git config core.hooksPath` に設定する相対 path
+- `[worktree]`: primary worktree をこの utility で作るときだけ使う任意 section
 - `[worktree].default_root_env`: `create-worktree` の root 決定に使う環境変数の優先順
 - `[worktree].default_root`: consumer root 基準の既定 worktree root
 - `[repos.<name>]`: 関連 repo 解決と linked worktree 作成設定
@@ -135,6 +133,17 @@ repo resolution 優先順位:
 4. `required = true` なら error
 
 repo 判定条件は `<path>/.git` の存在です。
+
+## App-first と Full-create の使い分け
+
+この utility には 2 つの使い方があります。
+
+1. App-first
+   Codex App が primary worktree を作り、この utility は `bootstrap` で linked worktree と symlink と steps だけを担当します。標準はこちらです。
+2. Full-create
+   この utility が `create-worktree` で primary も作ります。この場合だけ `[worktree]` section が必要です。
+
+`[worktree]` が config に存在しない場合、`create-worktree` は明示的に error になります。primary worktree は Codex App など外部管理の black box として扱う、という意味です。
 
 ## CLI Usage
 
@@ -165,15 +174,49 @@ uv run python -m codex_worktree validate-config --config <path>
 
 Codex App が管理する worktree は `$CODEX_HOME/worktrees` 配下に作られます。`$CODEX_HOME` の既定値は `~/.codex` なので、App の既定 location は `~/.codex/worktrees` です。
 
-一方、この utility の `create-worktree` は project config から App の内部状態を参照できないため、`default_root` を省略した場合は utility 独自の安全側 fallback として `<project-parent>/.worktrees/<repo-name>` を使います。
+一方、この utility の `create-worktree` は project config から App の内部状態を参照できないため、`[worktree]` を有効にした上で `default_root` を省略した場合は utility 独自の安全側 fallback として `<project-parent>/.worktrees/<repo-name>` を使います。
 
-Codex App と同じ系統の場所に寄せたい場合は、`default_root` を明示してください。consumer repo ごとの衝突を避けるため、この repo の examples では `~/.codex/worktrees/<repo-name>` を採用しています。
+Codex App と同じ系統の場所に寄せたい場合は、`default_root` を明示してください。Full-create 用 examples では `~/.codex/worktrees/<repo-name>` を採用しています。
 
 `CODEX_HOME` を独自値に変えている場合は、この utility 側でも `CODEX_WORKTREE_ROOT="$CODEX_HOME/worktrees/<repo-name>"` のように明示的に渡してください。Codex App 側の worktree 作成先は現状ユーザー設定では変更できません。
 
-## Backend 用設定例
+## App-first 設定例
 
 `examples/backend.worktree.toml`:
+
+```toml
+version = 1
+
+[git]
+hooks_path = ".githooks"
+
+[repos.docs]
+repo_env = ["CODEX_DOCS_REPO", "SMARTRA_DOCS_REPO"]
+discover = [".docs", "../docs", "docs"]
+linked_worktree_path = "../docs"
+branch_strategy = "mirror-current-or-parent"
+required = true
+
+[[links]]
+path = ".docs"
+repo = "docs"
+
+[[steps]]
+name = "sync-openapi"
+cwd = "."
+run = ["make", "sync-openapi"]
+
+[[steps]]
+name = "docs-catalog"
+cwd = ".docs"
+run = ["make", "docs-catalog"]
+```
+
+この形では Codex App が primary worktree を作り、`bootstrap` だけを使います。
+
+## Full-create 設定例
+
+`examples/backend.create-worktree.toml`:
 
 ```toml
 version = 1
@@ -207,9 +250,7 @@ cwd = ".docs"
 run = ["make", "docs-catalog"]
 ```
 
-## Web 用設定例
-
-`examples/web.worktree.toml`:
+`examples/web.create-worktree.toml`:
 
 ```toml
 version = 1
@@ -240,6 +281,8 @@ cwd = "."
 run = ["pnpm", "generate:types"]
 ```
 
+この形では `create-worktree` が有効になります。
+
 ## `.docs` Linked Worktree の考え方
 
 consumer repo から docs repo を直接参照すると、branch がずれていると差分確認がしづらくなります。`linked_worktree_path = "../docs"` を使うと、consumer worktree に対応した docs worktree を隣に作れます。
@@ -264,6 +307,8 @@ repo = "docs"
   --config "$ROOT_DIR/.codex/worktree.toml" \
   --dry-run
 ```
+
+この command は `[worktree]` section がある config でのみ使えます。
 
 ```bash
 ./bin/codex-worktree-bootstrap \

@@ -1,0 +1,263 @@
+#!/bin/zsh
+set -euo pipefail
+
+resolve_script_path() {
+  local source_path="$1"
+  while [ -L "$source_path" ]; do
+    local target
+    target="$(readlink "$source_path")"
+    if [[ "$target" = /* ]]; then
+      source_path="$target"
+    else
+      source_path="$(cd "$(dirname "$source_path")" && cd "$(dirname "$target")" && pwd)/$(basename "$target")"
+    fi
+  done
+  cd "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_script_path "$0")"
+KIT_DIR="${CODEX_WORKTREE_KIT:-$SCRIPT_DIR/codex-worktree-kit}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  codex-worktree <command> [options]
+
+Commands:
+  bootstrap              Run linked worktree bootstrap for the current repo
+  create <name>          Create a primary worktree via codex-worktree-kit
+  resolve-repo <key>     Resolve a configured repo path
+  validate-config        Validate the worktree config
+  help                   Show this help
+
+Defaults:
+  --root-dir defaults to the current Git toplevel
+  --config defaults to <root-dir>/.codex/worktree.toml
+
+Examples:
+  codex-worktree bootstrap
+  codex-worktree bootstrap --dry-run
+  codex-worktree create feature/docs-sync
+  codex-worktree resolve-repo docs
+  codex-worktree validate-config
+EOF
+}
+
+require_kit() {
+  if [[ ! -x "$KIT_DIR/bin/codex-worktree-bootstrap" ]]; then
+    echo "codex-worktree-kit not found or not executable: $KIT_DIR" >&2
+    return 1
+  fi
+}
+
+default_root_dir() {
+  git rev-parse --show-toplevel 2>/dev/null || {
+    echo "not inside a Git repository; pass --root-dir explicitly" >&2
+    return 1
+  }
+}
+
+bootstrap_cmd() {
+  require_kit || return 1
+  local root_dir=""
+  local config=""
+  local extra_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --root-dir)
+        root_dir="$2"
+        shift 2
+        ;;
+      --config)
+        config="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        return 0
+        ;;
+      *)
+        extra_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -z "$root_dir" ]]; then
+    root_dir="$(default_root_dir)" || return 1
+  fi
+  if [[ -z "$config" ]]; then
+    config="$root_dir/.codex/worktree.toml"
+  fi
+
+  exec "$KIT_DIR/bin/codex-worktree-bootstrap" \
+    --root-dir "$root_dir" \
+    --config "$config" \
+    "${extra_args[@]}"
+}
+
+create_cmd() {
+  require_kit || return 1
+  if [[ $# -lt 1 ]]; then
+    echo "usage: codex-worktree create <name> [options]" >&2
+    return 2
+  fi
+
+  local name="$1"
+  shift
+  local root_dir=""
+  local config=""
+  local extra_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --root-dir)
+        root_dir="$2"
+        shift 2
+        ;;
+      --config)
+        config="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        return 0
+        ;;
+      *)
+        extra_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -z "$root_dir" ]]; then
+    root_dir="$(default_root_dir)" || return 1
+  fi
+  if [[ -z "$config" ]]; then
+    config="$root_dir/.codex/worktree.toml"
+  fi
+
+  exec "$KIT_DIR/bin/codex-worktree-create-worktree" \
+    "$name" \
+    --root-dir "$root_dir" \
+    --config "$config" \
+    "${extra_args[@]}"
+}
+
+resolve_repo_cmd() {
+  require_kit || return 1
+  if [[ $# -lt 1 ]]; then
+    echo "usage: codex-worktree resolve-repo <repo-key> [options]" >&2
+    return 2
+  fi
+
+  local repo_key="$1"
+  shift
+  local root_dir=""
+  local config=""
+  local extra_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --root-dir)
+        root_dir="$2"
+        shift 2
+        ;;
+      --config)
+        config="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        return 0
+        ;;
+      *)
+        extra_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -z "$root_dir" ]]; then
+    root_dir="$(default_root_dir)" || return 1
+  fi
+  if [[ -z "$config" ]]; then
+    config="$root_dir/.codex/worktree.toml"
+  fi
+
+  exec "$KIT_DIR/bin/codex-worktree-resolve-repo" \
+    --root-dir "$root_dir" \
+    --config "$config" \
+    --repo-key "$repo_key" \
+    "${extra_args[@]}"
+}
+
+validate_config_cmd() {
+  require_kit || return 1
+  local root_dir=""
+  local config=""
+  local extra_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --root-dir)
+        root_dir="$2"
+        shift 2
+        ;;
+      --config)
+        config="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        return 0
+        ;;
+      *)
+        extra_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -z "$config" ]]; then
+    if [[ -z "$root_dir" ]]; then
+      root_dir="$(default_root_dir)" || return 1
+    fi
+    config="$root_dir/.codex/worktree.toml"
+  fi
+
+  exec "$KIT_DIR/bin/codex-worktree-validate-config" \
+    --config "$config" \
+    "${extra_args[@]}"
+}
+
+main() {
+  local command="${1:-help}"
+  shift || true
+
+  case "$command" in
+    bootstrap)
+      bootstrap_cmd "$@"
+      ;;
+    create)
+      create_cmd "$@"
+      ;;
+    resolve-repo)
+      resolve_repo_cmd "$@"
+      ;;
+    validate-config)
+      validate_config_cmd "$@"
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    *)
+      echo "unknown command: $command" >&2
+      usage >&2
+      return 2
+      ;;
+  esac
+}
+
+main "$@"
