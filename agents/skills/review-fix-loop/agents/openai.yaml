@@ -1,4 +1,0 @@
-interface:
-  display_name: "Review Fix Loop"
-  short_description: "Help with Review Fix Loop tasks"
-  default_prompt: "Use $review-fix-loop. Run repeated $requesting-code-review rounds against a fixed baseline, fix findings with $receiving-code-review, and when strict_mode=true run one extra $requesting-code-review round after findings reach zero."
