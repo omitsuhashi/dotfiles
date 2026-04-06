@@ -63,6 +63,28 @@ class RepoResolutionTests(unittest.TestCase):
 
             self.assertEqual(resolved, sibling.resolve())
 
+    def test_main_worktree_sibling_repo_is_used_for_app_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "smartra"
+            main_root = project / "backend"
+            docs_repo = project / "docs"
+            app_worktree = base / ".codex" / "worktrees" / "0acf" / "backend"
+            main_root.mkdir(parents=True)
+            app_worktree.mkdir(parents=True)
+            self._init_repo(docs_repo)
+            config = self._load_config(base)
+
+            resolved = resolve_repo_path(
+                root_dir=app_worktree,
+                repo_key="docs",
+                repo_config=config.repos["docs"],
+                env={},
+                git_common_dir_resolver=lambda _: main_root / ".git",
+            )
+
+            self.assertEqual(resolved, docs_repo.resolve())
+
     def _load_config(self, base: Path):
         config_path = base / "worktree.toml"
         config_path.write_text(

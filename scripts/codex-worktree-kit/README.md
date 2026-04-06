@@ -130,9 +130,12 @@ repo resolution 優先順位:
 1. `repo_env`
 2. `discover`
 3. main worktree 親 directory 配下の sibling 推定
-4. `required = true` なら error
+4. `git rev-parse --git-common-dir` から復元した main worktree 周辺の候補
+5. `required = true` なら error
 
 repo 判定条件は `<path>/.git` の存在です。
+
+Codex App 配下の worktree では、4 で main worktree root を復元し、`<main-root>/.docs` と `<main-root-parent>/docs` も候補に入ります。
 
 ## App-first と Full-create の使い分け
 
