@@ -105,7 +105,10 @@ def resolve_worktree_root(
             return Path(value).expanduser().resolve()
 
     if config.worktree.default_root:
-        return (root_dir / config.worktree.default_root).resolve()
+        default_root = Path(config.worktree.default_root).expanduser()
+        if default_root.is_absolute():
+            return default_root.resolve()
+        return (root_dir / default_root).resolve()
 
     repo_name = root_dir.name
     return (root_dir.parent / ".worktrees" / repo_name).resolve()

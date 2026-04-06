@@ -4,7 +4,7 @@ version = 1
 hooks_path = ".githooks"
 
 [worktree]
-default_root = "../.worktrees/backend"
+default_root = "~/.codex/worktrees/backend"
 default_root_env = ["CODEX_WORKTREE_ROOT"]
 
 [repos.docs]

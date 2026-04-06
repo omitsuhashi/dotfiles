@@ -20,7 +20,7 @@ class ValidateConfigTests(unittest.TestCase):
                     hooks_path = ".githooks"
 
                     [worktree]
-                    default_root = "../.worktrees/backend"
+                    default_root = "~/.codex/worktrees/backend"
                     default_root_env = ["CODEX_WORKTREE_ROOT"]
 
                     [repos.docs]
@@ -47,7 +47,7 @@ class ValidateConfigTests(unittest.TestCase):
 
             self.assertEqual(config.version, 1)
             self.assertEqual(config.git.hooks_path, ".githooks")
-            self.assertEqual(config.worktree.default_root, "../.worktrees/backend")
+            self.assertEqual(config.worktree.default_root, "~/.codex/worktrees/backend")
             self.assertEqual(config.repos["docs"].linked_worktree_path, "../docs")
             self.assertEqual(config.links[0].repo, "docs")
             self.assertEqual(config.steps[0].run, ["make", "sync-openapi"])
@@ -71,7 +71,7 @@ class ValidateConfigTests(unittest.TestCase):
                     version = 1
 
                     [worktree]
-                    default_root = "../.worktrees/backend"
+                    default_root = "~/.codex/worktrees/backend"
                     default_root_env = ["CODEX_WORKTREE_ROOT", "ALT_ROOT"]
                     """
                 ),
@@ -100,7 +100,7 @@ class ValidateConfigTests(unittest.TestCase):
 
             self.assertEqual(explicit, Path("/tmp/explicit").resolve())
             self.assertEqual(from_env, Path("/tmp/env").resolve())
-            self.assertEqual(from_default, (root_dir / "../.worktrees/backend").resolve())
+            self.assertEqual(from_default, Path("~/.codex/worktrees/backend").expanduser().resolve())
 
 
 if __name__ == "__main__":

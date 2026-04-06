@@ -87,7 +87,7 @@ version = 1
 hooks_path = ".githooks"
 
 [worktree]
-default_root = "../.worktrees/backend"
+default_root = "~/.codex/worktrees/backend"
 default_root_env = ["CODEX_WORKTREE_ROOT"]
 
 [repos.docs]
@@ -161,6 +161,16 @@ uv run python -m codex_worktree validate-config --config <path>
 3. `worktree.default_root`
 4. `<project-parent>/.worktrees/<repo-name>`
 
+## Codex App の既定値との対応
+
+Codex App が管理する worktree は `$CODEX_HOME/worktrees` 配下に作られます。`$CODEX_HOME` の既定値は `~/.codex` なので、App の既定 location は `~/.codex/worktrees` です。
+
+一方、この utility の `create-worktree` は project config から App の内部状態を参照できないため、`default_root` を省略した場合は utility 独自の安全側 fallback として `<project-parent>/.worktrees/<repo-name>` を使います。
+
+Codex App と同じ系統の場所に寄せたい場合は、`default_root` を明示してください。consumer repo ごとの衝突を避けるため、この repo の examples では `~/.codex/worktrees/<repo-name>` を採用しています。
+
+`CODEX_HOME` を独自値に変えている場合は、この utility 側でも `CODEX_WORKTREE_ROOT="$CODEX_HOME/worktrees/<repo-name>"` のように明示的に渡してください。Codex App 側の worktree 作成先は現状ユーザー設定では変更できません。
+
 ## Backend 用設定例
 
 `examples/backend.worktree.toml`:
@@ -172,7 +182,7 @@ version = 1
 hooks_path = ".githooks"
 
 [worktree]
-default_root = "../.worktrees/backend"
+default_root = "~/.codex/worktrees/backend"
 default_root_env = ["CODEX_WORKTREE_ROOT"]
 
 [repos.docs]
@@ -205,7 +215,7 @@ run = ["make", "docs-catalog"]
 version = 1
 
 [worktree]
-default_root = "../.worktrees/web"
+default_root = "~/.codex/worktrees/web"
 default_root_env = ["CODEX_WORKTREE_ROOT", "WEB_WORKTREE_ROOT"]
 
 [repos.docs]

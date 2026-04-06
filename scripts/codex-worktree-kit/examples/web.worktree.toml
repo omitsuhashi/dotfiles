@@ -1,7 +1,7 @@
 version = 1
 
 [worktree]
-default_root = "../.worktrees/web"
+default_root = "~/.codex/worktrees/web"
 default_root_env = ["CODEX_WORKTREE_ROOT", "WEB_WORKTREE_ROOT"]
 
 [repos.docs]
