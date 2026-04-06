@@ -1,0 +1,29 @@
+version = 1
+
+[git]
+hooks_path = ".githooks"
+
+[worktree]
+default_root = "../.worktrees/backend"
+default_root_env = ["CODEX_WORKTREE_ROOT"]
+
+[repos.docs]
+repo_env = ["CODEX_DOCS_REPO", "SMARTRA_DOCS_REPO"]
+discover = [".docs", "../docs", "docs"]
+linked_worktree_path = "../docs"
+branch_strategy = "mirror-current-or-parent"
+required = true
+
+[[links]]
+path = ".docs"
+repo = "docs"
+
+[[steps]]
+name = "sync-openapi"
+cwd = "."
+run = ["make", "sync-openapi"]
+
+[[steps]]
+name = "docs-catalog"
+cwd = ".docs"
+run = ["make", "docs-catalog"]

@@ -1,0 +1,26 @@
+version = 1
+
+[worktree]
+default_root = "../.worktrees/web"
+default_root_env = ["CODEX_WORKTREE_ROOT", "WEB_WORKTREE_ROOT"]
+
+[repos.docs]
+repo_env = ["CODEX_DOCS_REPO"]
+discover = [".docs", "../docs"]
+linked_worktree_path = "../docs"
+branch_strategy = "mirror-current-or-parent"
+required = true
+
+[[links]]
+path = ".docs"
+repo = "docs"
+
+[[steps]]
+name = "docs-catalog"
+cwd = ".docs"
+run = ["make", "docs-catalog"]
+
+[[steps]]
+name = "web-types"
+cwd = "."
+run = ["pnpm", "generate:types"]

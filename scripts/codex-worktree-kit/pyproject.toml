@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-worktree-kit"
+version = "0.1.0"
+description = "Config-driven Codex worktree bootstrap utility"
+requires-python = ">=3.12"
+
+[project.scripts]
+codex-worktree-bootstrap = "codex_worktree.cli:bootstrap_entrypoint"
+codex-worktree-create-worktree = "codex_worktree.cli:create_worktree_entrypoint"
+codex-worktree-resolve-repo = "codex_worktree.cli:resolve_repo_entrypoint"
+codex-worktree-validate-config = "codex_worktree.cli:validate_config_entrypoint"

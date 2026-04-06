@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+PROJECT_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
+PYTHON_BIN="$PROJECT_ROOT/.venv/bin/python"
+
+if [[ ! -x "$PYTHON_BIN" ]]; then
+  echo "missing project virtualenv: $PYTHON_BIN" >&2
+  echo "run: (cd \"$PROJECT_ROOT\" && uv sync)" >&2
+  exit 1
+fi
+
+exec "$PYTHON_BIN" -m codex_worktree create-worktree "$@"
