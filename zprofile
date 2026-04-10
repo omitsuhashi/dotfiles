@@ -25,9 +25,9 @@ if [[ $(uname -m) == 'arm64' ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
-# nodenv
-PATH="$HOME/.nodenv/bin:$PATH"
-eval "$(nodenv init -)"
+# Drop stale nodenv entries if they were inherited from a parent process.
+path=(${path:#$HOME/.nodenv/bin} ${path:#$HOME/.nodenv/shims})
+export PATH
 
 # direnv
 eval "$(direnv hook zsh)"
@@ -139,4 +139,6 @@ gtr() {
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
-
+if command -v nvm >/dev/null 2>&1; then
+  nvm use --silent default >/dev/null 2>&1 || true
+fi
