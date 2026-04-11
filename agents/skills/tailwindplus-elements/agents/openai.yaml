@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tailwind Plus Elements"
+  short_description: "Tailwind Plus Elements の導入とコンポーネント参照"
+  default_prompt: "Use $tailwindplus-elements to check installation, React usage, or the API and examples for a specific Tailwind Plus Elements component."
