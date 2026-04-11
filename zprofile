@@ -19,7 +19,6 @@ alias start-pg='brew services start postgresql@17'
 alias stop-pg='brew services stop postgresql@17'
 alias git-diff='git diff main...HEAD > combined_changes.patch'
 
-
 # brew
 if [[ $(uname -m) == 'arm64' ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"

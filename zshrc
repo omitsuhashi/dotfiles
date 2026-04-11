@@ -43,3 +43,10 @@ wt-clean() {
         fi
       done
 }
+
+# bun completions
+[ -s "/Users/omitsuhashi/.bun/_bun" ] && source "/Users/omitsuhashi/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
