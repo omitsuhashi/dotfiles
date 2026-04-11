@@ -1,0 +1,131 @@
+# Operations
+
+mode ごとの標準手順をまとめたファイルです。現在の作業に対応する section だけを読みます。
+
+## `bootstrap`
+
+新規 vault を作るとき、または既存 vault を LLM Wiki パターンへ寄せるときに使います。
+
+### Goal
+
+raw source を不変に保ちつつ、wiki の page 種別と `AGENTS.md` の運用契約が明確な構成を作ります。
+
+### Check First
+
+- 既存の Obsidian vault または Markdown repo はあるか
+- `raw/`, `wiki/`, `index.md`, `log.md`, `AGENTS.md` は既にあるか
+- 既存の naming convention を維持すべきか
+- 小規模な personal wiki か、継続的な research / team wiki か
+
+### Default Procedure
+
+1. `raw/` と `wiki/` の境界を決めるか確認する。
+2. 無ければ `assets/templates/AGENTS.md`, `index.md`, `log.md` をコピーする。
+3. `references/schema-and-conventions.md` の推奨サブディレクトリを作る。
+4. YAML frontmatter を使うか決める。
+5. 初期構成を `index.md` に記録する。
+6. `log.md` に `bootstrap` エントリを追加する。
+
+### Output Expectations
+
+- repo に明示的な schema file がある
+- wiki に辿りやすい entrypoint がある
+- 後続 session が ingest / query / lint のやり方を再発明せずに済む
+
+## `ingest`
+
+`raw/` に新しい source が入り、wiki へ統合するときに使います。
+
+### Goal
+
+新しい source の知識を一度だけコンパイルし、その結果を persistent wiki 全体へ配ることで、後続 query が毎回 synthesis をやり直さなくて済むようにします。
+
+### Check First
+
+- 新しく入った source file はどれか
+- 影響を受ける既存 page はどれか
+- この source や topic の summary page は既にあるか
+- raw source へ直接 citation すべき claim はどれか
+
+### Default Procedure
+
+1. `raw/` から source を読む。
+2. `index.md` を見て関連 page を当てる。
+3. 編集前に直接関係する entity / concept / synthesis page を開く。
+4. source summary page を作るか更新する。
+5. 新しい事実、対立点、cross-link を関係 page に反映する。
+6. 新規 page や大きく変わった page を `index.md` に反映する。
+7. 何を変えたかを `log.md` の `ingest` エントリに記録する。
+
+### Editing Rules
+
+- raw file は不変に保つ。
+- 自然に分解できるなら、大きな 1 枚より小さな複数 page を優先する。
+- 古い claim を黙って置き換えず、矛盾を明示する。
+- source summary から entity / concept へ事実を運ぶときも citation を保つ。
+
+## `query`
+
+maintained wiki に対して質問へ答えるときに使います。
+
+### Goal
+
+compiled wiki を再利用して根拠付きで素早く答え、その出力自体を wiki に残すべきか判断します。
+
+### Check First
+
+- `index.md` のどこが関連 page を指しているか
+- 既に必要 topic をまとめている wiki page はあるか
+- 裏取りや dispute resolution に raw source が要るか
+- 回答は一時的なものか、durable page にすべきか
+
+### Default Procedure
+
+1. `index.md` から始める。
+2. 必要最小限の wiki page を読む。
+3. wiki が薄い、争点がある、古い場合だけ raw citation を追加で引く。
+4. 必要に応じて wiki page と raw source を引用して答える。
+5. 再利用価値があれば `wiki/queries/` か `wiki/syntheses/` に page を作るか更新する。
+6. 新しい durable page を `index.md` に登録し、`log.md` に `query` エントリを追加する。
+
+### File-Back Rule
+
+次のいずれかに当てはまるなら、回答を wiki へ戻します。
+
+- 比較や synthesis を後で再利用しそう
+- taxonomy, table, framing など durable な整理を作れた
+- query が露出させた gap を新しい page が埋めた
+- user が durable note, memo, deck, report を明示的に求めた
+
+## `lint`
+
+単一 source の処理ではなく、wiki 全体の health check をするときに使います。
+
+### Goal
+
+wiki が断片的な summary の寄せ集めへ劣化する前に、構造的な弱点を見つけます。
+
+### Check First
+
+- `index.md` が重要 page を網羅しているか
+- `log.md` に recent ingest はあるのに wiki 更新が追随していない箇所はないか
+- inbound link のない page はどれか
+- 新しい source で superseded されていそうな claim はどれか
+- 繰り返し言及されるのに独立 page を持たない concept はどれか
+
+### Default Procedure
+
+1. `index.md` と `log.md` を走査する。
+2. orphan page, stale page, contradiction candidate, recurring unnamed concept を洗う。
+3. 編集前に対象 page を確認して問題を確定する。
+4. link 修正、missing page 追加、stale claim の superseded 明記を行う。
+5. 具体的な gap がある箇所だけ targeted な source 追加や web check を提案する。
+6. 所見と修正を `log.md` の `lint` エントリへ記録する。
+
+### Common Lint Findings
+
+- inbound link を持たない page
+- 同じ concept の重複 page
+- entity / concept へ波及していない source summary
+- citation trail のない assertion
+- newer source を反映していない synthesis page

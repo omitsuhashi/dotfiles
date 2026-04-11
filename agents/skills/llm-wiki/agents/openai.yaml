@@ -1,0 +1,4 @@
+interface:
+  display_name: "LLM Wiki"
+  short_description: "Obsidianで育てるLLM管理型Markdown Wiki運用"
+  default_prompt: "Use $llm-wiki to bootstrap, ingest, query, or lint an Obsidian-based Markdown wiki that compiles raw sources into persistent knowledge."
