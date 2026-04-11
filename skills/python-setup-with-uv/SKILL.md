@@ -42,8 +42,9 @@ description: Use when starting a new Python project with uv and deciding the min
 
 ```bash
 uv init
-uv python pin 3.12
 ```
+
+Python バージョンはこの skill では固定しません。プロジェクト要件があるときだけ `uv python pin <version>` を使います。
 
 2. 最低限の開発依存を入れる
 
@@ -108,7 +109,6 @@ uv run mypy .
 [project]
 name = "example"
 version = "0.1.0"
-requires-python = ">=3.12"
 
 [dependency-groups]
 dev = [
@@ -125,6 +125,8 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ```
+
+`requires-python` も必須ではありません。公開パッケージにする、対応バージョンを明示したい、といった要件があるときだけ追加します。
 
 ### 最小 `.pre-commit-config.yaml`
 
