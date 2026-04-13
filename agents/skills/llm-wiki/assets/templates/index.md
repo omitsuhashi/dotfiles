@@ -1,23 +1,23 @@
-# Index
+# インデックス
 
-wiki の最初の navigation surface として使います。durable page はすべて 1 回だけ載せ、1 行 summary を付けます。
+wiki の最初の navigation surface として使います。durable page はすべて 1 回だけ載せ、1 行 summary を付けます。現役一覧には canonical page だけを残します。
 
-## Sources
+## ソース
 
-- [[2026-04-12 Article Title]] — source の要点、主要 claim、更新対象 page をまとめる。
+- [[2026-04-12 記事タイトル]] — source の要点、主要 claim、更新対象 page をまとめる。
 
-## Entities
+## エンティティ
 
-- [[Example Entity]] — それが何か、なぜ重要か、どこで現れるかをまとめる。
+- [[サンプルエンティティ]] — それが何か、なぜ重要か、どこで現れるかをまとめる。
 
-## Concepts
+## 概念
 
-- [[Example Concept]] — core idea, working definition, 関連 page への link をまとめる。
+- [[サンプル概念]] — core idea, working definition, 関連 page への link をまとめる。
 
-## Syntheses
+## シンセシス
 
-- [[Example Synthesis]] — 複数 page を束ねた比較、thesis、briefing をまとめる。
+- [[サンプルシンセシス]] — 複数 page を束ねた比較、論点整理、briefing をまとめる。
 
-## Queries
+## クエリ起点成果物
 
-- [[2026-04-12 Example Query]] — user question から派生した durable answer を保存する。
+- [[2026-04-12 サンプルクエリ]] — 質問から派生した durable な比較メモや判断材料を保存する。

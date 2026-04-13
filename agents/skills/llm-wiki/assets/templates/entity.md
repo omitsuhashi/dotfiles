@@ -5,31 +5,31 @@ updated: 2026-04-12
 source_files: []
 ---
 
-# Example Entity
+# サンプルエンティティ
 
-## Summary
+## 要約
 
 entity を 2-4 文で定義する。
 
-## Key Facts
+## 主要事実
 
-- Fact
-- Fact
-- Fact
+- 事実
+- 事実
+- 事実
 
-## Timeline
+## タイムライン
 
-- Date or period — Event
+- 日付または期間 — 出来事
 
-## Relationships
+## 関連ページ
 
-- [[Example Concept]] とどう関係するか
-- [[Example Synthesis]] のどこで重要になるか
+- [[サンプル概念]] とどう関係するか
+- [[サンプルシンセシス]] のどこで重要になるか
 
-## Open Questions
+## 未解決点
 
 - 未確定点や争点
 
-## Sources
+## 出典
 
-- [[2026-04-12 Article Title]]
+- [[2026-04-12 記事タイトル]]

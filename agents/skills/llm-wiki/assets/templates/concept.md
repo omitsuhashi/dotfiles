@@ -5,32 +5,32 @@ updated: 2026-04-12
 source_files: []
 ---
 
-# Example Concept
+# サンプル概念
 
-## Working Definition
+## 作業定義
 
 この wiki で採用する現時点の定義を書く。
 
-## Why It Matters
+## 重要性
 
 なぜ独立 page にする価値があるかを書く。
 
-## Supporting Claims
+## 支持する記述
 
-- Claim
-- Claim
-- Claim
+- 記述
+- 記述
+- 記述
 
-## Tensions And Counterpoints
+## 緊張関係と反証
 
 - competing interpretation
 - contradictory evidence
 
-## Related Pages
+## 関連ページ
 
-- [[Example Entity]]
-- [[Example Synthesis]]
+- [[サンプルエンティティ]]
+- [[サンプルシンセシス]]
 
-## Sources
+## 出典
 
-- [[2026-04-12 Article Title]]
+- [[2026-04-12 記事タイトル]]

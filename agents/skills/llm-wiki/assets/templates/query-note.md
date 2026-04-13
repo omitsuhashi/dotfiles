@@ -5,28 +5,28 @@ updated: 2026-04-12
 source_files: []
 ---
 
-# 2026-04-12 Example Query
+# 2026-04-12 サンプルクエリ
 
-## Question
+## 質問または依頼
 
 user question か、それを durable に言い換えた形を書く。
 
-## Answer
+## 結論
 
-再利用できる形で最終回答を書く。
+再利用できる形で最終回答を書く。比較メモ、briefing、判断材料メモ、短報のどれとして残すかが分かる書き方にする。
 
-## Key Comparisons
+## 判断材料または比較
 
-| Topic | A | B |
+| 項目 | A | B |
 |---|---|---|
-| Example | Note | Note |
+| 例 | Note | Note |
 
-## Follow-Up Gaps
+## 次に反映すべきこと
 
 - missing source
 - 次に作るか更新すべき page
 
-## Sources
+## 出典
 
-- [[2026-04-12 Article Title]]
-- [[Example Synthesis]]
+- [[2026-04-12 記事タイトル]]
+- [[サンプルシンセシス]]

@@ -6,29 +6,29 @@ source_files:
   - raw/sources/article-title.md
 ---
 
-# 2026-04-12 Article Title
+# 2026-04-12 記事タイトル
 
-## Why It Matters
+## この source の位置づけ
 
 この source が既存 wiki をどう変えるか、何を補強するかを書く。
 
-## Key Points
+## 要点
 
-- Point
-- Point
-- Point
+- 要点
+- 要点
+- 要点
 
-## Related Pages
+## 関連ページ
 
-- [[Example Entity]]
-- [[Example Concept]]
-- [[Example Synthesis]]
+- [[サンプルエンティティ]]
+- [[サンプル概念]]
+- [[サンプルシンセシス]]
 
-## Open Questions
+## 未解決点
 
 - 何がまだ不明か
 - 他 source と照合すべき点は何か
 
-## Sources
+## 出典
 
-- [[raw/sources/article-title.md]]
+- [[raw/sources/記事タイトル.md]]

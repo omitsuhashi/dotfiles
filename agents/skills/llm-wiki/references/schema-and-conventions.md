@@ -20,6 +20,8 @@ repo-root/
 └── AGENTS.md
 ```
 
+local Markdown wiki であればこの構成をそのまま使ってよく、Obsidian はその一例です。
+
 ### Layer Rules
 
 - `raw/` は不変の source material として扱う。
@@ -27,6 +29,7 @@ repo-root/
 - `AGENTS.md` は後続 session 向けの operating contract として扱う。
 - `index.md` は catalog として扱う。
 - `log.md` は chronological ledger として扱う。
+- durable な本文は日本語を基本にする。
 
 ## Page Types
 
@@ -44,11 +47,11 @@ source summary 用です。主要 claim、この source が重要な理由、ope
 
 ### `wiki/syntheses/`
 
-比較、thesis、timeline、due diligence note、定期 briefing などの上位 synthesis 用です。
+比較、thesis、timeline、due diligence note、briefing、短い report などの上位 synthesis 用です。
 
 ### `wiki/queries/`
 
-質問から始まったが保存価値がある回答用です。
+質問から始まったが保存価値がある回答、比較メモ、判断材料メモ、短報用です。
 
 ## Naming Defaults
 
@@ -65,23 +68,47 @@ source summary 用です。主要 claim、この source が重要な理由、ope
 - `wiki/syntheses/LLM Wiki Architecture.md`
 - `wiki/queries/2026-04-12 Compare RAG And LLM Wiki.md`
 
+## Page Boundary And Canonicalization
+
+- 1 file 1 durable topic を守る。
+- 強く重なる page を見つけたら、どちらを canonical page にするか決める。
+- canonical page は標準的な名前、明確な scope、継続参照しやすさを優先して選ぶ。
+- rename / merge / archive は lightweight に扱い、後継 page と discoverability を残す。
+
+rename / merge / archive を行ったら、最低限次を更新します。
+
+- `index.md`
+- `log.md`
+- 触った page の link
+- canonical page への inbound link
+
 ## Linking Rules
 
-- `[[LLM Wiki Architecture]]` のような Obsidian wikilink を優先する。
+- Markdown link を基本にする。
+- `[[LLM Wiki Architecture]]` のような wikilink は使える環境なら歓迎する。
 - summary page から entity / concept / synthesis へ outward link を張る。
 - 新しい durable page には最低 1 本の inbound link を作る。
 - 強く重なる 2 page は明示的に link し、境界を説明する。
 
 ## Citation Rules
 
-- durable page には `## Sources` section を置く。
+- durable page には `## 出典` section を置く。
 - 関連する raw file か source summary page へ戻れるようにする。
 - 争点がある claim や驚く claim は、平坦化せず inline で disagreement を書く。
 
 推奨 citation パターン:
 
 ```markdown
-## Sources
+## 出典
+
+- [2026-04-12 Article Title](wiki/sources/2026-04-12%20Article%20Title.md)
+- [raw/sources/article-title.md](raw/sources/article-title.md)
+```
+
+wikilink を使う環境なら、次のように置き換えても構いません。
+
+```markdown
+## 出典
 
 - [[2026-04-12 Article Title]]
 - [[raw/sources/article-title.md]]
@@ -94,6 +121,7 @@ source summary 用です。主要 claim、この source が重要な理由、ope
 - page type ごとに整理する。
 - durable wiki page を 1 回ずつ載せる。
 - 各 page に 1 行 summary を付ける。
+- rename / merge / archive 後は canonical page だけを現役一覧に残す。
 - frontmatter を安定運用しているなら updated date や source count を足してよい。
 
 良い entry パターン:
@@ -107,6 +135,7 @@ source summary 用です。主要 claim、この source が重要な理由、ope
 `log.md` は append-only で扱います。
 
 - bootstrap, ingest, query filing, lint pass ごとに 1 entry
+- rename / merge / archive の lifecycle action も 1 entry
 - 予測しやすい prefix で始める
 - 何が変わり、どの page を触ったかを残す
 

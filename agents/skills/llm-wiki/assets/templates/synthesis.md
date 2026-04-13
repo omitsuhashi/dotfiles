@@ -5,26 +5,31 @@ updated: 2026-04-12
 source_files: []
 ---
 
-# Example Synthesis
+# サンプルシンセシス
 
-## Thesis
+## 結論
 
 現時点の synthesis を数文で書く。
 
-## Evidence
+## 主要比較または論点
 
 - supporting page or source
 - supporting page or source
 
-## Counterevidence
+## 含意と判断材料
+
+- 何を意思決定に使えるか
+- どこまでを briefing / short report として再利用できるか
+
+## 反証と留保
 
 - tension, contradiction, or missing piece
 
-## Related Pages
+## 関連ページ
 
-- [[Example Entity]]
-- [[Example Concept]]
+- [[サンプルエンティティ]]
+- [[サンプル概念]]
 
-## Sources
+## 出典
 
-- [[2026-04-12 Article Title]]
+- [[2026-04-12 記事タイトル]]

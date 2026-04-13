@@ -2,9 +2,15 @@
 
 mode ごとの標準手順をまとめたファイルです。現在の作業に対応する section だけを読みます。
 
+## Default Stance
+
+- routine な low-risk 更新は自律で進める
+- 曖昧さが高く、影響が広く、後戻りコストが大きい変更だけ user と揃える
+- durable な wiki documentation は本文を日本語で保つ
+
 ## `bootstrap`
 
-新規 vault を作るとき、または既存 vault を LLM Wiki パターンへ寄せるときに使います。
+新規 local Markdown wiki を作るとき、または既存の Markdown repo / vault を LLM Wiki パターンへ寄せるときに使います。
 
 ### Goal
 
@@ -12,7 +18,7 @@ raw source を不変に保ちつつ、wiki の page 種別と `AGENTS.md` の運
 
 ### Check First
 
-- 既存の Obsidian vault または Markdown repo はあるか
+- 既存の local Markdown wiki または Markdown repo はあるか
 - `raw/`, `wiki/`, `index.md`, `log.md`, `AGENTS.md` は既にあるか
 - 既存の naming convention を維持すべきか
 - 小規模な personal wiki か、継続的な research / team wiki か
@@ -25,6 +31,12 @@ raw source を不変に保ちつつ、wiki の page 種別と `AGENTS.md` の運
 4. YAML frontmatter を使うか決める。
 5. 初期構成を `index.md` に記録する。
 6. `log.md` に `bootstrap` エントリを追加する。
+
+### Pause And Align When
+
+- directory layout や naming に複数の妥当案があり、後で rename / relink が多発しそう
+- 既存 wiki と新規ルールのどちらを canonical にするかで運用コストが変わる
+- 1 回の bootstrap で広範囲の page 再配置を伴う
 
 ### Output Expectations
 
@@ -64,6 +76,14 @@ raw source を不変に保ちつつ、wiki の page 種別と `AGENTS.md` の運
 - 古い claim を黙って置き換えず、矛盾を明示する。
 - source summary から entity / concept へ事実を運ぶときも citation を保つ。
 
+### Pause And Align When
+
+- 1 つの source が複数 page の境界を作り直しそう
+- 既存 page の canonical 名称や topic boundary を変える必要がある
+- source の解釈が割れ、どの framing を採るかで downstream page が大きく変わる
+
+それ以外の routine な summary 追加、citation 補強、軽い cross-link 追加は自律で進めます。
+
 ## `query`
 
 maintained wiki に対して質問へ答えるときに使います。
@@ -88,6 +108,12 @@ compiled wiki を再利用して根拠付きで素早く答え、その出力自
 5. 再利用価値があれば `wiki/queries/` か `wiki/syntheses/` に page を作るか更新する。
 6. 新しい durable page を `index.md` に登録し、`log.md` に `query` エントリを追加する。
 
+### Pause And Align When
+
+- query の結果をどの page に落とすべきか曖昧で、既存 page を大きく再編しそう
+- 回答が複数の durable artifact 候補にまたがり、emphasis の置き方で成果物が変わる
+- query への回答が broad rewrite や rename / merge 判断を伴う
+
 ### File-Back Rule
 
 次のいずれかに当てはまるなら、回答を wiki へ戻します。
@@ -95,7 +121,7 @@ compiled wiki を再利用して根拠付きで素早く答え、その出力自
 - 比較や synthesis を後で再利用しそう
 - taxonomy, table, framing など durable な整理を作れた
 - query が露出させた gap を新しい page が埋めた
-- user が durable note, memo, deck, report を明示的に求めた
+- user が durable note, memo, briefing, deck, report を明示的に求めた
 
 ## `lint`
 
@@ -129,3 +155,33 @@ wiki が断片的な summary の寄せ集めへ劣化する前に、構造的な
 - entity / concept へ波及していない source summary
 - citation trail のない assertion
 - newer source を反映していない synthesis page
+
+## Page Lifecycle And Canonicalization
+
+重複や強い重なりを見つけたら、page を増やし続けず lightweight に整理します。
+
+### Canonical Page を選ぶ基準
+
+- 最も標準的な名前で表現できる
+- 1 page 1 durable topic の境界が明確
+- 既存 link の受け皿として中心に置きやすい
+- 今後も継続参照されそうな scope を持つ
+
+### Rename
+
+canonical 名称へ寄せます。旧 page を消すだけで discoverability を失うなら、短い案内 stub を残して新 page へ誘導します。
+
+### Merge
+
+destination を 1 つ決め、unique な内容だけを canonical page へ移します。統合元は削除せず、merged / superseded の案内を短く残すか archive します。
+
+### Archive
+
+obsolete, superseded, duplicate のときだけ使います。archive 先または後継 page を明示し、現役 page と誤認される書き方を避けます。
+
+### After Any Lifecycle Action
+
+- `index.md` を canonical 状態に更新する
+- `log.md` に rename / merge / archive の事実を残す
+- 触った page の outbound link を見直す
+- canonical page へ最低 1 本の inbound link が残ることを確認する
