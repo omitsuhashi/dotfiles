@@ -4,6 +4,34 @@
 
 ## Default Layout
 
+まず knowledge root を 1 つ決めます。dedicated wiki repo なら repo root 自体を knowledge root にしてよく、mixed repo なら wiki 専用の subdirectory を knowledge root に切り出します。
+
+### Recommended Layout For Mixed Repositories
+
+```text
+repo-root/
+├── AGENTS.md
+└── <knowledge-root>/
+    ├── raw/
+    │   ├── sources/
+    │   └── assets/
+    ├── wiki/
+    │   ├── sources/
+    │   ├── entities/
+    │   ├── concepts/
+    │   ├── syntheses/
+    │   └── queries/
+    ├── index.md
+    ├── log.md
+    └── AGENTS.md
+```
+
+- repo root の `AGENTS.md` は thin router として扱い、knowledge root の `AGENTS.md` への導線だけを置く。
+- detailed な schema と workflow contract は knowledge root の `AGENTS.md` に置く。
+- `raw/`, `wiki/`, `index.md`, `log.md` は knowledge root の内側に揃える。
+
+### Default Layout For Dedicated Wiki Repositories
+
 ```text
 repo-root/
 ├── raw/
@@ -20,13 +48,15 @@ repo-root/
 └── AGENTS.md
 ```
 
-local Markdown wiki であればこの構成をそのまま使ってよく、Obsidian はその一例です。
+local Markdown wiki であればこの構成をそのまま使ってよく、Obsidian はその一例です。mixed repo でなければ、この layout でも問題ありません。
 
 ### Layer Rules
 
+- `knowledge root` は wiki 運用の単位として扱う。
 - `raw/` は不変の source material として扱う。
 - `wiki/` は LLM が保守する working knowledge として扱う。
-- `AGENTS.md` は後続 session 向けの operating contract として扱う。
+- knowledge root の `AGENTS.md` は後続 session 向けの operating contract として扱う。
+- repo root の `AGENTS.md` は mixed repo のときだけ thin router として置いてよい。
 - `index.md` は catalog として扱う。
 - `log.md` は chronological ledger として扱う。
 - durable な本文は日本語を基本にする。

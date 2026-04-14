@@ -1,6 +1,6 @@
 # LLM Wiki 運用契約
 
-この repository は persistent な LLM-maintained wiki です。毎 session で次のルールに従います。
+この directory は persistent な LLM-maintained wiki の knowledge root です。毎 session で次のルールに従います。
 
 ## レイヤーモデル
 
