@@ -14,7 +14,7 @@ mode ごとの標準手順をまとめたファイルです。現在の作業に
 
 ### Goal
 
-raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGENTS.md` の運用契約が明確な構成を作ります。
+raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGENTS.md` の local contract が明確で、汎用運用は `llm-wiki` skill に集約された構成を作ります。
 
 ### Check First
 
@@ -29,7 +29,7 @@ raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGE
 
 1. dedicated wiki repo か mixed repo かを決め、knowledge root を確定する。
 2. mixed repo なら `assets/templates/root-AGENTS.md` を元に repo root に thin router `AGENTS.md` を置き、knowledge root の `AGENTS.md` への導線だけを書く。
-3. 無ければ knowledge root に `assets/templates/AGENTS.md`, `index.md`, `log.md` をコピーする。
+3. 無ければ knowledge root に `assets/templates/AGENTS.md`, `index.md`, `log.md` をコピーする。knowledge root の `AGENTS.md` には skill への導線と local override だけを書く。
 4. `references/schema-and-conventions.md` の推奨サブディレクトリを knowledge root 配下に作る。
 5. YAML frontmatter を使うか決める。
 6. 初期構成を knowledge root の `index.md` に記録する。
@@ -44,7 +44,7 @@ raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGE
 
 ### Output Expectations
 
-- knowledge root に明示的な schema file がある
+- knowledge root に local contract と entrypoint がある
 - repo root から wiki に辿りやすい entrypoint がある
 - 後続 session が ingest / query / lint のやり方を再発明せずに済む
 

@@ -1,6 +1,6 @@
 ---
 name: llm-wiki
-description: Use when building or maintaining a persistent knowledge base in a local Markdown wiki (Obsidian-friendly) where raw sources stay immutable and the LLM incrementally updates wiki pages, index.md, and log.md. Covers bootstrap, ingest, query, and lint workflows for raw sources, entity/concept pages, durable Markdown outputs, citations, and schema guidance stored in AGENTS.md.
+description: Use when building or maintaining a persistent knowledge base in a local Markdown wiki (Obsidian-friendly) where raw sources stay immutable and the LLM incrementally updates wiki pages, index.md, and log.md.
 ---
 
 # LLM Wiki
@@ -9,19 +9,19 @@ description: Use when building or maintaining a persistent knowledge base in a l
 
 この skill は、local Markdown wiki（Obsidian-friendly）を都度再発見する RAG ではなく、蓄積される knowledge base として運用するためのものです。耐久性のある成果物は wiki であり、`raw/` は不変、`index.md` と `log.md` は first-class の運用ファイルとして扱います。wiki documentation は本文を日本語で保つことを基本にします。
 
-mixed repo では、wiki 専用の `knowledge root` を 1 つ決め、その配下に詳細な `AGENTS.md` を置くことを基本にします。repo root に `AGENTS.md` を置く場合は thin router に留め、wiki 固有の詳細運用契約を重複させません。
+mixed repo では、wiki 専用の `knowledge root` を 1 つ決めます。repo root の `AGENTS.md` は thin router に留め、knowledge root の `AGENTS.md` もこの skill への導線と local override だけを書く thin contract として扱います。汎用的な wiki 運用ルールの canonical source はこの skill です。
 
 作業のたびに、まずどの層を触るかを決めます。
 
 - `knowledge root/`: wiki 運用の起点となる directory。mixed repo では `knowledge/`, `research/knowledge-base/` などの subdirectory に置いてよい。
 - `raw/`: source of truth. Read only. Never edit.
 - `wiki/`: LLM-managed pages. Create and update freely.
-- `AGENTS.md`: detailed schema and workflow contract. Place it at the knowledge root and update only when operating conventions need to change.
+- `AGENTS.md`: this skill への router と local contract。knowledge root 固有の前提や override だけを書き、汎用運用ルールは重複させない。
 
 ## Quick Workflow
 
 1. Identify the mode: `bootstrap`, `ingest`, `query`, or `lint`.
-2. Determine the knowledge root first. If repo root has only a thin router `AGENTS.md`, follow it and then read the knowledge-root `AGENTS.md`.
+2. Determine the knowledge root first. If repo root has only a thin router `AGENTS.md`, follow it and then read the knowledge-root `AGENTS.md` to pick up local context and overrides.
 3. Read only the matching reference file sections instead of loading everything.
 4. Inspect `index.md` before touching wiki pages unless the task is pure bootstrap.
 5. Update `log.md` for every ingest, durable query output, or lint pass.
@@ -76,7 +76,7 @@ Read:
 - `references/optional-tooling.md`
   Obsidian Web Clipper, local image handling, Dataview, Marp, `qmd` などの任意ツール。どれも必須ではありません。
 - `assets/templates/`
-  knowledge-root 用 `AGENTS.md`, thin root router 用 `root-AGENTS.md`, `index.md`, `log.md`, source/entity/concept/synthesis/query note の初期雛形。
+  knowledge-root 用 thin `AGENTS.md`, repo root 用 `root-AGENTS.md`, `index.md`, `log.md`, source/entity/concept/synthesis/query note の初期雛形。
 
 ## Common Mistakes
 
@@ -86,5 +86,6 @@ Read:
 - 価値のある query output を chat にだけ残して wiki に還元しないこと。
 - 重複 page を見つけても canonical page を決めずに増やし続けること。
 - wiki documentation を英語へ寄せて、継続運用の読みやすさを落とすこと。
+- knowledge root の `AGENTS.md` に汎用運用ルールを複写し、skill 側と二重管理にすること。
 - mixed repo なのに detailed な wiki 運用契約を repo root の `AGENTS.md` に長く書くこと。
 - 全 reference を最初から読み込むこと。必要な section だけ読むこと。

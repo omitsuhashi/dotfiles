@@ -27,7 +27,7 @@ repo-root/
 ```
 
 - repo root の `AGENTS.md` は thin router として扱い、knowledge root の `AGENTS.md` への導線だけを置く。
-- detailed な schema と workflow contract は knowledge root の `AGENTS.md` に置く。
+- knowledge root の `AGENTS.md` は `llm-wiki` skill への導線と local override を書く thin contract として扱う。
 - `raw/`, `wiki/`, `index.md`, `log.md` は knowledge root の内側に揃える。
 
 ### Default Layout For Dedicated Wiki Repositories
@@ -55,7 +55,7 @@ local Markdown wiki であればこの構成をそのまま使ってよく、Obs
 - `knowledge root` は wiki 運用の単位として扱う。
 - `raw/` は不変の source material として扱う。
 - `wiki/` は LLM が保守する working knowledge として扱う。
-- knowledge root の `AGENTS.md` は後続 session 向けの operating contract として扱う。
+- knowledge root の `AGENTS.md` は後続 session 向けの local contract として扱い、汎用運用ルールは `llm-wiki` skill を canonical とする。
 - repo root の `AGENTS.md` は mixed repo のときだけ thin router として置いてよい。
 - `index.md` は catalog として扱う。
 - `log.md` は chronological ledger として扱う。
