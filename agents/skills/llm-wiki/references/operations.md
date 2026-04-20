@@ -14,7 +14,7 @@ mode ごとの標準手順をまとめたファイルです。現在の作業に
 
 ### Goal
 
-raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGENTS.md` の local contract が明確で、汎用運用は `llm-wiki` skill に集約された構成を作ります。
+raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGENTS.md` の local contract が明確で、汎用運用は `llm-wiki` skill に集約された構成を作ります。加えて、superpowers など他 workflow が作る durable な spec / ADR / plan / roadmap の保存先も knowledge root に寄せます。
 
 ### Check First
 
@@ -24,16 +24,18 @@ raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGE
 - knowledge root の `raw/`, `wiki/`, `index.md`, `log.md`, `AGENTS.md` は既にあるか
 - 既存の naming convention を維持すべきか
 - 小規模な personal wiki か、継続的な research / team wiki か
+- superpowers や他 workflow が durable doc をどこへ書くべきか
 
 ### Default Procedure
 
 1. dedicated wiki repo か mixed repo かを決め、knowledge root を確定する。
-2. mixed repo なら `assets/templates/root-AGENTS.md` を元に repo root に thin router `AGENTS.md` を置き、knowledge root の `AGENTS.md` への導線だけを書く。
-3. 無ければ knowledge root に `assets/templates/AGENTS.md`, `index.md`, `log.md` をコピーする。knowledge root の `AGENTS.md` には skill への導線と local override だけを書く。
+2. mixed repo なら `assets/templates/root-AGENTS.md` を元に repo root に thin router `AGENTS.md` を置き、knowledge root の `AGENTS.md` への導線と、他 workflow の durable doc を knowledge root へ保存する routing だけを書く。
+3. 無ければ knowledge root に `assets/templates/AGENTS.md`, `index.md`, `log.md` をコピーする。knowledge root の `AGENTS.md` には skill への導線、local override、superpowers などの durable doc routing を書く。
 4. `references/schema-and-conventions.md` の推奨サブディレクトリを knowledge root 配下に作る。
-5. YAML frontmatter を使うか決める。
-6. 初期構成を knowledge root の `index.md` に記録する。
-7. knowledge root の `log.md` に `bootstrap` エントリを追加する。
+5. roadmap, ADR, spec, design doc, implementation plan の default 保存先を `wiki/syntheses/` にするか、project 固有の subdirectory を使うか決めて `AGENTS.md` に明記する。
+6. YAML frontmatter を使うか決める。
+7. 初期構成を knowledge root の `index.md` に記録する。
+8. knowledge root の `log.md` に `bootstrap` エントリを追加する。
 
 ### Pause And Align When
 
@@ -41,6 +43,7 @@ raw source を不変に保ちつつ、knowledge root, wiki の page 種別, `AGE
 - repo root を knowledge root のまま使うべきか、subdirectory に切り出すべきかで運用コストが変わる
 - 既存 wiki と新規ルールのどちらを canonical にするかで運用コストが変わる
 - 1 回の bootstrap で広範囲の page 再配置を伴う
+- 既存 workflow が repo-root `docs/` など別の durable doc 置き場に強く依存しており、routing 変更の影響が読めない
 
 ### Output Expectations
 

@@ -79,9 +79,24 @@ source summary 用です。主要 claim、この source が重要な理由、ope
 
 比較、thesis、timeline、due diligence note、briefing、短い report などの上位 synthesis 用です。
 
+roadmap, ADR, spec, design doc, implementation plan のような durable な設計・判断文書も、原則としてここへ置きます。これらは repo-root `docs/` の一時的な side output ではなく、knowledge root に残すべき compiled knowledge として扱います。
+
 ### `wiki/queries/`
 
 質問から始まったが保存価値がある回答、比較メモ、判断材料メモ、短報用です。
+
+質問起点の比較メモや判断メモで、独立した spec / ADR / roadmap まで育てないものはここへ置きます。
+
+## Durable Document Routing
+
+他 workflow が durable な文書を作る場合も、knowledge root に回収できるようにします。特に superpowers のように spec や plan を生成する workflow は、repo-root の慣習的な `docs/` ではなく、この wiki の page type へ保存先を寄せます。
+
+デフォルト routing:
+
+- roadmap, ADR, spec, design doc, implementation plan, briefing, comparison note は `wiki/syntheses/`
+- 質問起点の短い判断メモや比較メモは `wiki/queries/`
+
+project 固有の理由で `wiki/syntheses/adr/` や `wiki/syntheses/specs/` のような下位構造を使うなら、knowledge-root の `AGENTS.md` に local override として明記します。repo-root の `AGENTS.md` からも、その override に辿れるようにします。
 
 ## Naming Defaults
 
@@ -96,6 +111,9 @@ source summary 用です。主要 claim、この source が重要な理由、ope
 - `wiki/entities/Vannevar Bush.md`
 - `wiki/concepts/Persistent Knowledge Base.md`
 - `wiki/syntheses/LLM Wiki Architecture.md`
+- `wiki/syntheses/Authentication Roadmap.md`
+- `wiki/syntheses/ADR Session Strategy.md`
+- `wiki/syntheses/Checkout API Phase 1 Spec.md`
 - `wiki/queries/2026-04-12 Compare RAG And LLM Wiki.md`
 
 ## Page Boundary And Canonicalization

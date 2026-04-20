@@ -24,15 +24,16 @@ mixed repo では、wiki 専用の `knowledge root` を 1 つ決めます。repo
 2. Determine the knowledge root first. If repo root has only a thin router `AGENTS.md`, follow it and then read the knowledge-root `AGENTS.md` to pick up local context and overrides.
 3. Read only the matching reference file sections instead of loading everything.
 4. Inspect `index.md` before touching wiki pages unless the task is pure bootstrap.
-5. Update `log.md` for every ingest, durable query output, or lint pass.
-6. If an answer creates durable value, file it back into the wiki instead of leaving it in chat only.
-7. Pause only for ambiguous, high-impact, or multi-page changes. Routine low-risk updates proceed autonomously.
+5. During `bootstrap`, define in repo-root and knowledge-root `AGENTS.md` where other workflows should save durable docs. Route superpowers-style outputs such as roadmap, ADR, spec, design doc, and implementation plan into the knowledge root instead of leaving them in repo-root `docs/` by default.
+6. Update `log.md` for every ingest, durable query output, or lint pass.
+7. If an answer creates durable value, file it back into the wiki instead of leaving it in chat only.
+8. Pause only for ambiguous, high-impact, or multi-page changes. Routine low-risk updates proceed autonomously.
 
 ## Mode Entry Checks
 
 ### `bootstrap`
 
-wiki / repo の境界を確認し、まず knowledge root を確定します。dedicated wiki repo なら knowledge root は repo root で構いません。mixed repo なら knowledge root を subdirectory に切り出し、repo root の `AGENTS.md` は参照先を示す thin router に留めます。新規 wiki を作るときは `assets/templates/` の雛形を使います。構成や命名に複数の妥当案があり、後戻りコストが高いときだけ user と揃えます。
+wiki / repo の境界を確認し、まず knowledge root を確定します。dedicated wiki repo なら knowledge root は repo root で構いません。mixed repo なら knowledge root を subdirectory に切り出し、repo root の `AGENTS.md` は参照先を示す thin router に留めます。新規 wiki を作るときは `assets/templates/` の雛形を使います。bootstrap 時には、superpowers など他 workflow が出力する durable な spec / ADR / plan / roadmap も knowledge root へ保存する routing を `AGENTS.md` に明示します。構成や命名に複数の妥当案があり、後戻りコストが高いときだけ user と揃えます。
 
 Read:
 
@@ -84,6 +85,7 @@ Read:
 - 既存 wiki を見ずに記憶だけで答えること。
 - page を更新したのに `index.md` や `log.md` を更新しないこと。
 - 価値のある query output を chat にだけ残して wiki に還元しないこと。
+- superpowers など別 workflow が作る durable な spec / ADR / roadmap / plan を knowledge root の外へ散らし、wiki の catalog と切り離すこと。
 - 重複 page を見つけても canonical page を決めずに増やし続けること。
 - wiki documentation を英語へ寄せて、継続運用の読みやすさを落とすこと。
 - knowledge root の `AGENTS.md` に汎用運用ルールを複写し、skill 側と二重管理にすること。

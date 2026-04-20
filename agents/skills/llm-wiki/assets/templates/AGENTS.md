@@ -16,10 +16,12 @@
 - `index.md` は durable wiki page の catalog として扱う
 - `log.md` は bootstrap, ingest, query, lint, lifecycle action の append-only timeline として扱う
 - wiki documentation の本文は日本語を基本にする
+- superpowers など他 workflow が作る durable な roadmap / ADR / spec / design doc / implementation plan も knowledge root 配下へ保存する
+- default routing は、roadmap / ADR / spec / design doc / implementation plan / briefing / comparison note を `wiki/syntheses/`、質問起点の短い判断メモを `wiki/queries/` とする
 
 ## Local Overrides
 
-- この knowledge root 固有の命名規則、page type の追加、frontmatter 規約、link 規約がある場合だけここへ追記する
+- この knowledge root 固有の命名規則、page type の追加、frontmatter 規約、link 規約、durable doc の保存先 override がある場合だけここへ追記する
 - 汎用運用ルールをここへ再掲しない
 
 ## Conflict Rule
