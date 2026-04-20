@@ -1,4 +1,5 @@
 .venv
+.pyc
 .idea/inspectionProfiles/
 .idea/misc.xml
 .idea/*.iml
