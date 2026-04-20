@@ -3,8 +3,7 @@
 .idea/misc.xml
 .idea/*.iml
 .DS_Store
-**/.obsidian/workspace.json
-.obsidian/graph.json
+.obsidian/
 git_toolbox_prj.xml
 
 
