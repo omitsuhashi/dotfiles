@@ -1,4 +1,6 @@
-source ~/.vim/vimrc.keymap
+if filereadable(expand('~/.vim/vimrc.keymap'))
+  source ~/.vim/vimrc.keymap
+endif
 
 set surround
 
@@ -20,4 +22,3 @@ nnoremap ]e :<C-u>action GotoNextError<CR>
 
 " change name
 nnoremap cre :<C-u>action RenameElement<CR>
-

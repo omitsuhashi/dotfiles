@@ -1,7 +1,9 @@
 
    
 "Key mappings
-source ~/.vim/vimrc.keymap
+if filereadable(expand('~/.vim/vimrc.keymap'))
+  source ~/.vim/vimrc.keymap
+endif
 
 "General settings
 
@@ -27,4 +29,3 @@ set ignorecase
 set smartcase
 set wrapscan
 set incsearch
-

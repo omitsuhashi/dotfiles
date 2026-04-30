@@ -10,33 +10,56 @@ if [[ -d /opt/homebrew/share/zsh/site-functions ]]; then
   fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
 fi
 
+_dotfiles_source_if_file() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  source "$file"
+}
+
+_dotfiles_path_prepend_if_dir() {
+  local dir="$1"
+  path=(${path:#$dir})
+  [[ -d "$dir" ]] || {
+    export PATH
+    return 0
+  }
+  path=("$dir" ${path:#$dir})
+  export PATH
+}
+
+_dotfiles_path_append_if_dir() {
+  local dir="$1"
+  path=(${path:#$dir})
+  [[ -d "$dir" ]] || {
+    export PATH
+    return 0
+  }
+  path=(${path:#$dir} "$dir")
+  export PATH
+}
+
 # Source Prezto.
 if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
 # Customize to your needs...
-source "/Users/omitsuhashi/google-cloud-sdk/path.zsh.inc"
+_dotfiles_source_if_file "/Users/omitsuhashi/google-cloud-sdk/path.zsh.inc"
 
 # The next line updates PATH for the Google Cloud SDK.
-if [ -f '/Users/omitsuhashi/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/omitsuhashi/google-cloud-sdk/path.zsh.inc'; fi
-
 # The next line enables shell command completion for gcloud.
-if [ -f '/Users/omitsuhashi/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/omitsuhashi/google-cloud-sdk/completion.zsh.inc'; fi
+_dotfiles_source_if_file "/Users/omitsuhashi/google-cloud-sdk/completion.zsh.inc"
 
 # Added by LM Studio CLI (lms)
-export PATH="$PATH:/Users/omitsuhashi/.lmstudio/bin"
+_dotfiles_path_append_if_dir "/Users/omitsuhashi/.lmstudio/bin"
 
 # pnpm
 export PNPM_HOME="/Users/omitsuhashi/Library/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
+_dotfiles_path_prepend_if_dir "$PNPM_HOME"
 # pnpm end
 
 # Added by Antigravity
-export PATH="/Users/omitsuhashi/.antigravity/antigravity/bin:$PATH"
+_dotfiles_path_prepend_if_dir "/Users/omitsuhashi/.antigravity/antigravity/bin"
 
 # Remove all git worktrees except current working directory.
 wt-clean() {
@@ -50,8 +73,8 @@ wt-clean() {
 }
 
 # bun completions
-[ -s "/Users/omitsuhashi/.bun/_bun" ] && source "/Users/omitsuhashi/.bun/_bun"
+_dotfiles_source_if_file "/Users/omitsuhashi/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+_dotfiles_path_prepend_if_dir "$BUN_INSTALL/bin"

@@ -1,16 +1,54 @@
 # install Prezto
 # https://github.com/sorin-ionescu/prezto
 
-export SDKROOT=$(xcrun --show-sdk-path)
+_dotfiles_source_if_file() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  source "$file"
+}
+
+_dotfiles_path_prepend_if_dir() {
+  local dir="$1"
+  path=(${path:#$dir})
+  [[ -d "$dir" ]] || {
+    export PATH
+    return 0
+  }
+  path=("$dir" ${path:#$dir})
+  export PATH
+}
+
+_dotfiles_path_append_if_dir() {
+  local dir="$1"
+  path=(${path:#$dir})
+  [[ -d "$dir" ]] || {
+    export PATH
+    return 0
+  }
+  path=(${path:#$dir} "$dir")
+  export PATH
+}
+
+if command -v xcrun >/dev/null 2>&1; then
+  export SDKROOT="$(xcrun --show-sdk-path)"
+fi
 
 export LSCOLORS=gxfxcxdxbxegedabagacad
 export LC_ALL='en_US.UTF-8'
 export LANG='en_US.UTF-8'
 
-export LDFLAGS="-L/usr/local/opt/openssl/lib"
-export CPPFLAGS="-I/usr/local/opt/openssl/include"
+if [[ -d /usr/local/opt/openssl/lib ]]; then
+  export LDFLAGS="-L/usr/local/opt/openssl/lib"
+fi
+if [[ -d /usr/local/opt/openssl/include ]]; then
+  export CPPFLAGS="-I/usr/local/opt/openssl/include"
+fi
 
-export HDF5_DIR=/opt/homebrew/opt/hdf5
+if [[ -d /opt/homebrew/opt/hdf5 ]]; then
+  export HDF5_DIR=/opt/homebrew/opt/hdf5
+else
+  unset HDF5_DIR
+fi
 export TOOL_DIR=$HOME/.tool
 
 # alias
@@ -20,7 +58,7 @@ alias stop-pg='brew services stop postgresql@17'
 alias git-diff='git diff main...HEAD > combined_changes.patch'
 
 # brew
-if [[ $(uname -m) == 'arm64' ]]; then
+if [[ "$(uname -m)" == 'arm64' && -x /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
@@ -29,46 +67,58 @@ path=(${path:#$HOME/.nodenv/bin} ${path:#$HOME/.nodenv/shims})
 export PATH
 
 # direnv
-eval "$(direnv hook zsh)"
+if command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
 
 # openjdk
-PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+_dotfiles_path_prepend_if_dir "/opt/homebrew/opt/openjdk/bin"
 
 # dart
-PATH="$PATH":"$HOME/.pub-cache/bin"
+_dotfiles_path_append_if_dir "$HOME/.pub-cache/bin"
 
 # golang
 export GOPATH=$HOME/go
 export GOBIN=$GOPATH/bin
-PATH="$PATH:$GOBIN"
+_dotfiles_path_append_if_dir "$GOBIN"
 
 # rust
-PATH="$PATH:$HOME/.cargo/bin"
+_dotfiles_path_append_if_dir "$HOME/.cargo/bin"
 
 # flutter
-PATH="$PATH:$HOME/.tools/flutter/bin"
+_dotfiles_path_append_if_dir "$HOME/.tools/flutter/bin"
 
 # libpq
 # TODO remove this and related packages
-export LDFLAGS="-L/opt/homebrew/opt/libpq/lib"
-export CPPFLAGS="-I/opt/homebrew/opt/libpq/include"
-export PKG_CONFIG_PATH="/opt/homebrew/opt/libpq/lib/pkgconfig"
-PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+if [[ -d /opt/homebrew/opt/libpq/lib ]]; then
+  export LDFLAGS="-L/opt/homebrew/opt/libpq/lib"
+fi
+if [[ -d /opt/homebrew/opt/libpq/include ]]; then
+  export CPPFLAGS="-I/opt/homebrew/opt/libpq/include"
+fi
+if [[ -d /opt/homebrew/opt/libpq/lib/pkgconfig ]]; then
+  export PKG_CONFIG_PATH="/opt/homebrew/opt/libpq/lib/pkgconfig"
+fi
+_dotfiles_path_prepend_if_dir "/opt/homebrew/opt/libpq/bin"
 
 # llvm
-export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
-export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
-PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+if [[ -d /opt/homebrew/opt/llvm/lib ]]; then
+  export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
+fi
+if [[ -d /opt/homebrew/opt/llvm/include ]]; then
+  export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
+fi
+_dotfiles_path_prepend_if_dir "/opt/homebrew/opt/llvm/bin"
 
 export PATH
 
 # Added by OrbStack: command-line tools and integration
 # This won't be added again if you remove it.
-source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+_dotfiles_source_if_file "$HOME/.orbstack/shell/init.zsh"
 
 # Setting PATH for Python 3.12
 # The original version is saved in .zprofile.pysave
-PATH="/Library/Frameworks/Python.framework/Versions/3.12/bin:${PATH}"
+_dotfiles_path_prepend_if_dir "/Library/Frameworks/Python.framework/Versions/3.12/bin"
 export PATH
 
 # hugging-face
@@ -81,15 +131,17 @@ else
 fi
 
 # scripts
-PATH="$HOME/scripts:$PATH"
+_dotfiles_path_prepend_if_dir "$HOME/scripts"
 export PATH
 
 # flutter
-export PATH=$HOME/flutter/bin:$PATH
+_dotfiles_path_prepend_if_dir "$HOME/flutter/bin"
 
 # ffmpeg
-export DYLD_LIBRARY_PATH="/opt/homebrew/opt/ffmpeg@7/lib:$DYLD_LIBRARY_PATH"
-export PATH="/opt/homebrew/opt/ffmpeg@7/bin:$PATH"
+if [[ -d /opt/homebrew/opt/ffmpeg@7/lib ]]; then
+  export DYLD_LIBRARY_PATH="/opt/homebrew/opt/ffmpeg@7/lib:$DYLD_LIBRARY_PATH"
+fi
+_dotfiles_path_prepend_if_dir "/opt/homebrew/opt/ffmpeg@7/bin"
 
 # codex
 export CODEX_PROFILE=sandbox
@@ -136,8 +188,8 @@ gtr() {
 
 # nvm
 export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+_dotfiles_source_if_file "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+_dotfiles_source_if_file "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
 if command -v nvm >/dev/null 2>&1; then
   nvm use --silent default >/dev/null 2>&1 || true
 fi
