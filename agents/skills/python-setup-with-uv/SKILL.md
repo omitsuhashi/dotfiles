@@ -68,6 +68,8 @@ uv run pre-commit install --install-hooks
 
 `pre-commit install` はリポジトリごとに必要です。`pyproject.toml` に `pre-commit` を入れただけでは Git commit 時には実行されません。
 
+ただし、コミット時に「自動修正後の内容を同じ commit に含める」挙動を採用する場合は、ここで一度止まり、後述の「自動修正を同じコミットへ含めたい場合」を先に選びます。その場合は `core.hooksPath` を `.githooks` に向けるため、標準の `.git/hooks/pre-commit` へ入れる `pre-commit install` だけでは効きません。
+
 5. 最初の検証を流す
 
 ```bash
@@ -135,6 +137,8 @@ select = ["E", "F", "I", "UP", "B"]
 
 コミットを遅くしすぎないため、最初は `ruff` だけを hook に載せます。
 
+標準の `pre-commit` 挙動でよい場合、つまり自動修正が入ったら commit を止めて人間が確認し、再度 `git add` する運用なら次を使います。
+
 ```yaml
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -142,10 +146,26 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
+        types_or: [python, pyi]
       - id: ruff-format
+        types_or: [python, pyi]
 ```
 
 `rev` は固定値ではなく、その時点の最新安定版へ更新してください。導入後も `pre-commit autoupdate` で追従します。
+
+自動修正を同じ commit へ含める運用を選ぶ場合、この mutating な設定は commit hook として使いません。`pre-commit run --all-files` や CI で状態確認しやすいよう、check-only にします。
+
+```yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: vX.Y.Z
+    hooks:
+      - id: ruff-check
+        types_or: [python, pyi]
+      - id: ruff-format
+        args: [--check]
+        types_or: [python, pyi]
+```
 
 ### コミット時の期待挙動
 
@@ -186,6 +206,14 @@ uv run pre-commit run --all-files --show-diff-on-failure
 
 ただしこの方式は、部分 staging との相性が悪いです。未 stage の変更まで formatter が触れて同じ commit に混ざるリスクがあるため、同じファイルに staged / unstaged の両方の変更がある場合は commit を止めます。
 
+このモードを選ぶ場合の基本方針は次です。
+
+- `.pre-commit-config.yaml` は check-only にする
+- commit 時の自動修正と `git add` は `.githooks/pre-commit` が担当する
+- `.githooks/pre-commit` は repo に commit する
+- `git config core.hooksPath .githooks` は clone ごとの初期設定として実行する
+- 同じファイルに staged / unstaged の両方がある場合は commit を止める
+
 `.githooks/pre-commit` 例:
 
 ```bash
@@ -225,6 +253,17 @@ git config core.hooksPath .githooks
 ```
 
 チームで同じ挙動を共有したい場合は、`.githooks/pre-commit` をリポジトリ管理し、初期セットアップ手順に `git config core.hooksPath .githooks` を含めます。
+
+この方式を採用した repo では、次の確認を必ず行います。
+
+```bash
+git config --get core.hooksPath
+test -x .githooks/pre-commit
+.githooks/pre-commit
+uv run pre-commit run --all-files --show-diff-on-failure
+```
+
+`core.hooksPath` を設定すると、標準の `.git/hooks/pre-commit` は使われません。`.git/hooks/pre-commit` と `.githooks/pre-commit` の両方を見て判断すると誤診しやすいため、必ず `git config --get core.hooksPath` を先に見ます。
 
 `pytest` や `mypy` は、次のどちらかで回すのが無難です。
 
