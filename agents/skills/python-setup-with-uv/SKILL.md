@@ -63,8 +63,10 @@ uv add --dev poethepoet
 
 ```bash
 uv sync
-uv run pre-commit install
+uv run pre-commit install --install-hooks
 ```
+
+`pre-commit install` はリポジトリごとに必要です。`pyproject.toml` に `pre-commit` を入れただけでは Git commit 時には実行されません。
 
 5. 最初の検証を流す
 
@@ -72,6 +74,7 @@ uv run pre-commit install
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest
+uv run pre-commit run --all-files --show-diff-on-failure
 ```
 
 型チェックを使うなら:
@@ -143,6 +146,85 @@ repos:
 ```
 
 `rev` は固定値ではなく、その時点の最新安定版へ更新してください。導入後も `pre-commit autoupdate` で追従します。
+
+### コミット時の期待挙動
+
+標準の `pre-commit` では、hook がファイルを自動修正した場合、そのコミットは失敗します。これは異常ではなく、修正後の差分を人間が確認して `git add` し直すための安全な挙動です。
+
+期待される流れは次です。
+
+```bash
+git add .
+git commit -m "change"
+# ruff-check --fix または ruff-format がファイルを更新したら commit は止まる
+git diff
+git add .
+git commit -m "change"
+```
+
+`ruff` や `ruff-format` が走ってファイルが変更されたにもかかわらず commit が成立する場合は、設定ではなく hook 実行経路を疑います。
+
+確認点は次です。
+
+- `.git/hooks/pre-commit` が存在するか
+- `git config --get core.hooksPath` で別の hook ディレクトリへ向いていないか
+- GUI / IDE の commit が Git hook を無視する設定になっていないか
+- `git commit --no-verify` 相当で実行されていないか
+- 独自の hook wrapper が `pre-commit` の終了コードを握りつぶしていないか
+
+最低限の診断コマンドは次です。
+
+```bash
+test -f .git/hooks/pre-commit && sed -n '1,80p' .git/hooks/pre-commit
+git config --get core.hooksPath
+uv run pre-commit run --all-files --show-diff-on-failure
+```
+
+### 自動修正を同じコミットへ含めたい場合
+
+「自動修正できるものは修正して、その修正後の内容を同じコミットに含める」挙動は、標準の `pre-commit` 設定だけでは実現しません。実現するなら project-local な Git hook を明示的に管理します。
+
+ただしこの方式は、部分 staging との相性が悪いです。未 stage の変更まで formatter が触れて同じ commit に混ざるリスクがあるため、同じファイルに staged / unstaged の両方の変更がある場合は commit を止めます。
+
+`.githooks/pre-commit` 例:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+files=()
+while IFS= read -r -d '' file; do
+  files+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACMR -z -- '*.py' '*.pyi')
+
+if [ "${#files[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+for file in "${files[@]}"; do
+  if ! git diff --quiet -- "$file"; then
+    echo "error: $file has both staged and unstaged changes."
+    echo "Stage or stash the unstaged changes before committing."
+    exit 1
+  fi
+done
+
+uv run ruff check --fix --exit-zero --force-exclude -- "${files[@]}"
+uv run ruff format --force-exclude -- "${files[@]}"
+git add -- "${files[@]}"
+
+uv run ruff check --force-exclude -- "${files[@]}"
+uv run ruff format --check --force-exclude -- "${files[@]}"
+```
+
+有効化:
+
+```bash
+chmod +x .githooks/pre-commit
+git config core.hooksPath .githooks
+```
+
+チームで同じ挙動を共有したい場合は、`.githooks/pre-commit` をリポジトリ管理し、初期セットアップ手順に `git config core.hooksPath .githooks` を含めます。
 
 `pytest` や `mypy` は、次のどちらかで回すのが無難です。
 
