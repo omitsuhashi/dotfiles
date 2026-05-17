@@ -193,3 +193,10 @@ _dotfiles_source_if_file "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # Th
 if command -v nvm >/dev/null 2>&1; then
   nvm use --silent default >/dev/null 2>&1 || true
 fi
+
+# Added by OrbStack: command-line tools and integration
+# This won't be added again if you remove it.
+source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+
+# Hermes Agent — ensure ~/.local/bin is on PATH
+export PATH="$HOME/.local/bin:$PATH"
