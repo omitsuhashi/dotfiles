@@ -2,3 +2,4 @@ __pycache__/
 .DS_Store
 .venv
 *.egg-info
+/agents/skills.disabled.20260529-213727/
