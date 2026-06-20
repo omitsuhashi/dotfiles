@@ -55,7 +55,7 @@ For each issue, keep the prompt short and point at source artifacts:
 
 - Local issue identifier and title.
 - GitHub issue URL or number if a remote mirror was created.
-- Blocker status: `実行可能` or `ブロック中`, plus `ブロック元` issue IDs.
+- ブロッカー状態: `実行可能` または `ブロック中`、および `ブロック元` のIssue ID.
 - Spec path and any ADR/glossary paths from Grill with Docs.
 - Worktree path and branch.
 - Required behavior and acceptance criteria.

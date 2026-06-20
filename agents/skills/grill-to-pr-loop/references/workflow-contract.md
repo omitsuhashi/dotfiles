@@ -36,6 +36,8 @@ GitHub issues are optional mirrors for collaboration and PR traceability. When c
 
 Do not use English display labels such as `Ready`, `Blocked`, `Blocked by`, `Blocks`, `None`, or `Not created` in generated issues or ledgers. Use `実行可能`, `ブロック中`, `ブロック元`, `ブロック先`, `なし`, and `未作成` instead. Only keep English when it is a command, path, identifier, product name, API name, branch name, URL, or copied external error text.
 
+Local ledgers must use these `レビュー状態` values: `下書き`, `承認済み`, `差し戻し`, `未解決`. Do not use `approved`, `rejected`, `draft`, or `unresolved` as generated review state values.
+
 Use local-only mode by default when:
 
 - The user has not explicitly approved remote issue creation.
@@ -134,7 +136,7 @@ Before creating GitHub issues:
 5. Create one GitHub issue per approved local issue.
 6. Update the local ledger with remote issue URLs.
 
-Do not create GitHub issues for rejected, draft, or unresolved local issues. Approved `ブロック中` issues may be mirrored only when the GitHub Mirror Gate explicitly includes blocked tracking issues and the user approves them.
+Do not create GitHub issues for `差し戻し`, `下書き`, or `未解決` local issues. Local issues with `レビュー状態: 承認済み` and `実行状態: ブロック中` may be mirrored only when the GitHub Mirror Gate explicitly includes blocked tracking issues and the user approves them.
 
 Remote issue bodies should preserve the Japanese local issue contract, blocker fields, and spec path. Use the repo's normal labels/milestones only when they are discoverable from repo docs or approved by the user.
 
@@ -145,9 +147,9 @@ If using `to-issues`, use only its context gathering, draft vertical-slice break
 Propose this table before creating worktrees, and record it after approval:
 
 ```markdown
-| ローカルIssue | GitHub Issue | ブランチ | 作業ツリー | ベース | 状態 | 検証 | PR |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| G2PR-001 | #123 または ローカルのみ | codex/g2pr-001-slug | <path> | <sha> | 実行可能/準備済み | <commands> | 未作成 |
+| ローカルIssue | GitHub Issue | ブランチ | 作業ツリー | ベース | 実行状態 | 準備状態 | 検証 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G2PR-001 | #123 または ローカルのみ | codex/g2pr-001-slug | <path> | <sha> | 実行可能 | 準備済み | <commands> | 未作成 |
 ```
 
 Default branch naming: `codex/<issue-id-or-slug>`. Use the repo's documented convention if it differs.
@@ -214,7 +216,7 @@ Create PRs only after final verification and review fixes. Prefer draft PRs when
 
 - What changed.
 - Spec, local issue, and remote issue links when available.
-- Blocker status and any stacked/dependent PR relationship.
+- ブロッカー状態と、必要な場合は stacked/dependent PR の関係.
 - Verification results.
 - Known risks.
 - Dependency/stacking notes.
@@ -235,7 +237,7 @@ Push and PR creation are remote writes. Use the relevant GitHub/PR skill or repo
 | Skipping Grill with Docs because the design seems obvious | Run it or stop if unavailable. |
 | Creating horizontal layer issues | Rewrite as vertical slices that are independently verifiable. |
 | Writing issues in English by habit | Write issue titles, headings, labels, status values, and prose in Japanese; keep technical identifiers unchanged. |
-| Leaving English labels in issue templates | Replace `Ready`, `Blocked`, `Blocked by`, `Blocks`, `None`, and `Not created` with `実行可能`, `ブロック中`, `ブロック元`, `ブロック先`, `なし`, and `未作成`. |
+| Leaving English labels in issue templates | Replace `Ready`, `Blocked`, `Blocked by`, `Blocks`, `None`, and `Not created` with `実行可能`, `ブロック中`, `ブロック元`, `ブロック先`, `なし`, and `未作成`; replace review values with `下書き`, `承認済み`, `差し戻し`, or `未解決`. |
 | Treating blockers as notes only | Maintain `ブロック元`, `ブロック先`, and `実行可能/ブロック中` status in the local ledger. |
 | Treating GitHub as the default issue source | Keep local issues canonical; mirror only after approval. |
 | Starting Goal loops before human review | Stop at the review packet and wait for approval. |
