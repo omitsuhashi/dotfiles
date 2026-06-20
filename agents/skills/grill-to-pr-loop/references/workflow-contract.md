@@ -30,9 +30,11 @@ Self-review the spec for placeholders, contradictory decisions, ambiguous accept
 
 ## Local-First Issue Policy
 
-Local issues are the source of truth for decomposition. Write local issue titles and prose in Japanese. Keep stable IDs, file paths, commands, code symbols, API names, branch names, error messages, and external issue/PR references in their original form.
+Local issues are the source of truth for decomposition. Write local issue titles, headings, field labels, status values, ledger labels, blocker summaries, and prose in Japanese. Keep stable IDs, file paths, commands, code symbols, API names, branch names, error messages, and external issue/PR references in their original form.
 
-GitHub issues are optional mirrors for collaboration and PR traceability. When creating GitHub issues, write the title and prose in Japanese using the same local issue contract.
+GitHub issues are optional mirrors for collaboration and PR traceability. When creating GitHub issues, write titles, headings, labels, status values, and prose in Japanese using the same local issue contract.
+
+Do not use English display labels such as `Ready`, `Blocked`, `Blocked by`, `Blocks`, `None`, or `Not created` in generated issues or ledgers. Use `実行可能`, `ブロック中`, `ブロック元`, `ブロック先`, `なし`, and `未作成` instead. Only keep English when it is a command, path, identifier, product name, API name, branch name, URL, or copied external error text.
 
 Use local-only mode by default when:
 
@@ -44,41 +46,41 @@ Use local-only mode by default when:
 Use GitHub mirror mode only after local issue approval. Record the relationship in the local ledger:
 
 ```markdown
-| ローカルID | タイトル | レビュー状態 | 実行状態 | ブロック元 | ブロック先 | Remote Issue | PR |
+| ローカルID | タイトル | レビュー状態 | 実行状態 | ブロック元 | ブロック先 | GitHub Issue | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| G2PR-001 | <日本語タイトル> | approved | Ready | None | G2PR-002 | https://github.com/<org>/<repo>/issues/<n> | None |
+| G2PR-001 | <日本語タイトル> | 承認済み | 実行可能 | なし | G2PR-002 | https://github.com/<org>/<repo>/issues/<n> | 未作成 |
 ```
 
 If GitHub publication fails, keep the approved local ledger intact and ask whether to continue local-only.
 
-## Blocker Graph
+## ブロッカーグラフ
 
 Build a blocker graph before the Issue Gate. Treat each blocker edge as `blocked issue -> required prerequisite`.
 
 Rules:
 
-- Every local issue must declare `Blocked by`.
-- Every local issue should declare `Blocks` when known.
-- `Ready` means `Blocked by` is `None` or all blockers are completed.
-- `Blocked` means at least one blocker is not completed.
-- Parallel work may start only for Ready issues with no dependency edge between them.
-- Worktree creation and Goal loops are allowed only for Ready issues unless the user explicitly overrides the blocker.
+- Every local issue must declare `ブロック元`.
+- Every local issue should declare `ブロック先` when known.
+- `実行可能` means `ブロック元` is `なし` or all blockers are completed.
+- `ブロック中` means at least one blocker is not completed.
+- Parallel work may start only for `実行可能` issues with no dependency edge between them.
+- Worktree creation and Goal loops are allowed only for `実行可能` issues unless the user explicitly overrides the blocker.
 - Detect cycles. If a cycle exists, stop and ask the user to revise the issue split or blocker graph.
-- When a blocker completes, update dependent issues from Blocked to Ready before proposing new worktrees.
+- When a blocker completes, update dependent issues from `ブロック中` to `実行可能` before proposing new worktrees.
 
 Use this compact graph summary in the local ledger:
 
 ```markdown
 ## ブロッカーグラフ
 
-- G2PR-001: Ready; blocks G2PR-002, G2PR-003
-- G2PR-002: Blocked by G2PR-001
-- G2PR-003: Blocked by G2PR-001
+- G2PR-001: 実行可能; ブロック先 G2PR-002, G2PR-003
+- G2PR-002: ブロック中; ブロック元 G2PR-001
+- G2PR-003: ブロック中; ブロック元 G2PR-001
 ```
 
-## Issue Template
+## ローカルIssueテンプレート
 
-Use vertical slices. Each issue should be independently verifiable. Write the title and prose in Japanese.
+Use vertical slices. Each issue should be independently verifiable. Write the title, headings, labels, status values, and prose in Japanese.
 
 ```markdown
 ## ローカルID
@@ -91,7 +93,7 @@ G2PR-<number>
 
 ## 作るもの
 
-<このスライスで実現する end-to-end の振る舞い。>
+<このスライスで実現する一連の振る舞い。>
 
 ## 受け入れ条件
 
@@ -100,14 +102,14 @@ G2PR-<number>
 
 ## ブロッカー
 
-- Ready: <Ready または Blocked>
-- Blocked by: <ローカルIssue ID または None>
-- Blocks: <ローカルIssue ID または None>
+- 実行状態: <実行可能 または ブロック中>
+- ブロック元: <ローカルIssue ID または なし>
+- ブロック先: <ローカルIssue ID または なし>
 
 ## 必要な文脈
 
-- Spec: <path>
-- ADR/glossary/docs: <paths or "None">
+- 仕様: <path>
+- ADR / 用語集 / 関連ドキュメント: <paths または なし>
 
 ## 検証
 
@@ -115,8 +117,8 @@ G2PR-<number>
 
 ## リモート追跡
 
-- GitHub issue: <URL or "Not created">
-- PR: <URL or "Not created">
+- GitHub Issue: <URL または 未作成>
+- PR: <URL または 未作成>
 ```
 
 Avoid brittle file-path instructions unless a path is the stable public surface being changed.
@@ -127,12 +129,12 @@ Before creating GitHub issues:
 
 1. Confirm the repo remote points to GitHub.
 2. Confirm a GitHub app, MCP tool, or `gh` CLI is available and authenticated.
-3. Present the exact local issues to publish, including Ready/Blocked status and blocker edges.
+3. Present the exact local issues to publish, including `実行可能/ブロック中` status and blocker edges.
 4. Ask for explicit approval to create remote issues.
 5. Create one GitHub issue per approved local issue.
 6. Update the local ledger with remote issue URLs.
 
-Do not create GitHub issues for rejected, draft, or unresolved local issues. Approved Blocked issues may be mirrored only when the GitHub Mirror Gate explicitly includes blocked tracking issues and the user approves them.
+Do not create GitHub issues for rejected, draft, or unresolved local issues. Approved `ブロック中` issues may be mirrored only when the GitHub Mirror Gate explicitly includes blocked tracking issues and the user approves them.
 
 Remote issue bodies should preserve the Japanese local issue contract, blocker fields, and spec path. Use the repo's normal labels/milestones only when they are discoverable from repo docs or approved by the user.
 
@@ -143,23 +145,23 @@ If using `to-issues`, use only its context gathering, draft vertical-slice break
 Propose this table before creating worktrees, and record it after approval:
 
 ```markdown
-| Local Issue | Remote Issue | Branch | Worktree | Base | Status | Verification | PR |
+| ローカルIssue | GitHub Issue | ブランチ | 作業ツリー | ベース | 状態 | 検証 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| G2PR-001 | #123 or local-only | codex/g2pr-001-slug | <path> | <sha> | Ready/prepared | <commands> | None |
+| G2PR-001 | #123 または ローカルのみ | codex/g2pr-001-slug | <path> | <sha> | 実行可能/準備済み | <commands> | 未作成 |
 ```
 
 Default branch naming: `codex/<issue-id-or-slug>`. Use the repo's documented convention if it differs.
 
 Default worktree placement: use the repo's existing worktree convention. If none exists, choose a sibling directory that includes the repo name and issue slug, then report it before implementation.
 
-Do not include Blocked issues in the proposed worktree map unless the user explicitly overrides the blocker. Do not run `git worktree add` until the user approves the proposed map.
+Do not include `ブロック中` issues in the proposed worktree map unless the user explicitly overrides the blocker. Do not run `git worktree add` until the user approves the proposed map.
 
 ## Approval Gates
 
 Run these gates in order:
 
 1. **Spec Gate**: Present the spec path, accepted decisions, non-goals, acceptance criteria, verification commands, and stop conditions. Wait for explicit approval before local issue decomposition.
-2. **Issue Gate**: Present Japanese local issues, blocker graph, dependency order, Ready/Blocked status, and acceptance criteria. Wait for explicit approval before GitHub mirroring or worktree planning.
+2. **Issue Gate**: Present Japanese local issues, blocker graph, dependency order, `実行可能/ブロック中` status, and acceptance criteria. Wait for explicit approval before GitHub mirroring or worktree planning.
 3. **GitHub Mirror Gate**: Optional. If the user wants remote tracking, present the exact local issues to publish, including blocked tracking issues if any, and wait for explicit approval before creating GitHub issues.
 4. **Worktree Map Gate**: Present proposed branch/worktree paths, base commit, and dependency constraints. Wait for explicit approval before creating worktrees.
 5. **Initial Verification Gate**: Run lightweight verification, summarize current artifacts, and wait for explicit approval before starting Goal loops.
@@ -168,7 +170,7 @@ Approval must be specific to the current gate packet. Vague approval from an ear
 
 ## Parallelization Rules
 
-- Parallelize only Ready issues with no dependency edge between them.
+- Parallelize only `実行可能` issues with no dependency edge between them.
 - Assign exactly one worktree per agent/thread.
 - Do not let two agents edit the same worktree.
 - Keep shared docs changes in a parent/prep issue when possible; otherwise serialize them.
@@ -180,7 +182,7 @@ Approval must be specific to the current gate packet. Vague approval from an ear
 Before Goal loops, present:
 
 - Spec path and summary of accepted decisions.
-- Issue list with blocker graph, Ready/Blocked status, and dependency order.
+- Issue list with blocker graph, `実行可能/ブロック中` status, and dependency order.
 - Worktree map.
 - Verification already run.
 - Exact question: whether the user approves starting implementation loops.
@@ -193,7 +195,7 @@ For each approved issue:
 
 1. Confirm the worktree path and branch.
 2. Re-read the issue and spec.
-3. Confirm the issue is Ready. If it is Blocked, stop unless the user explicitly approved an override.
+3. Confirm the issue is `実行可能`. If it is `ブロック中`, stop unless the user explicitly approved an override.
 4. Write or update tests first when behavior changes.
 5. Implement the narrowest change that satisfies the issue.
 6. Run targeted verification.
@@ -202,7 +204,7 @@ For each approved issue:
 9. Request code review or perform a review pass.
 10. Fix actionable findings.
 11. Commit only the issue's scoped changes.
-12. Mark completed blockers and update dependent issues from Blocked to Ready when applicable.
+12. Mark completed blockers and update dependent issues from `ブロック中` to `実行可能` when applicable.
 
 If the platform has a native Goal command, use it with the short prompt and linked docs. If not, execute the same loop manually and report that no native Goal runner was available.
 
@@ -232,8 +234,9 @@ Push and PR creation are remote writes. Use the relevant GitHub/PR skill or repo
 | --- | --- |
 | Skipping Grill with Docs because the design seems obvious | Run it or stop if unavailable. |
 | Creating horizontal layer issues | Rewrite as vertical slices that are independently verifiable. |
-| Writing issues in English by habit | Write issue titles and prose in Japanese; keep technical identifiers unchanged. |
-| Treating blockers as notes only | Maintain `Blocked by`, `Blocks`, and Ready/Blocked status in the local ledger. |
+| Writing issues in English by habit | Write issue titles, headings, labels, status values, and prose in Japanese; keep technical identifiers unchanged. |
+| Leaving English labels in issue templates | Replace `Ready`, `Blocked`, `Blocked by`, `Blocks`, `None`, and `Not created` with `実行可能`, `ブロック中`, `ブロック元`, `ブロック先`, `なし`, and `未作成`. |
+| Treating blockers as notes only | Maintain `ブロック元`, `ブロック先`, and `実行可能/ブロック中` status in the local ledger. |
 | Treating GitHub as the default issue source | Keep local issues canonical; mirror only after approval. |
 | Starting Goal loops before human review | Stop at the review packet and wait for approval. |
 | Starting Goal loops for blocked issues | Wait until blockers complete or get explicit override for stacked/dependent work. |
