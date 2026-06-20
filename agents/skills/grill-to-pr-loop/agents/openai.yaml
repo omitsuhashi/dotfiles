@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grill to PR Loop"
+  short_description: "Design-to-PR development loop"
+  default_prompt: "Use $grill-to-pr-loop to turn this design into issue worktrees, review gates, goal-loop execution, and PR review."
