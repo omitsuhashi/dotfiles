@@ -143,6 +143,15 @@ if [[ -d /opt/homebrew/opt/ffmpeg@7/lib ]]; then
 fi
 _dotfiles_path_prepend_if_dir "/opt/homebrew/opt/ffmpeg@7/bin"
 
+record_audio() {
+  ffmpeg -f avfoundation \
+    -i ":0" \
+    -ac 2 \
+    -ar 48000 \
+    -c:a pcm_s16le \
+    "./video_audio_$(date +%Y%m%d_%H%M%S).wav"
+}
+
 # codex
 export CODEX_PROFILE=sandbox
 gtr() {
