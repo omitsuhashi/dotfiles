@@ -72,6 +72,21 @@ wt-clean() {
       done
 }
 
+# Remove all local branches except main and develop.
+branch-clean() {
+  local branch
+
+  git switch main || return 1
+
+  git for-each-ref --format='%(refname:short)' refs/heads/ \
+    | while IFS= read -r branch; do
+        case "$branch" in
+          main|develop) ;;
+          *) git branch -D -- "$branch" ;;
+        esac
+      done
+}
+
 # bun completions
 _dotfiles_source_if_file "/Users/omitsuhashi/.bun/_bun"
 
