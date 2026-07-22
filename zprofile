@@ -144,11 +144,12 @@ fi
 _dotfiles_path_prepend_if_dir "/opt/homebrew/opt/ffmpeg@7/bin"
 
 capture_audio() {
-  ffmpeg -f avfoundation \
-    -i ":0" \
-    -ac 2 \
-    -ar 48000 \
-    -c:a pcm_s16le \
+  ffmpeg -hide_banner \
+    -thread_queue_size 2048 \
+    -f avfoundation \
+    -i ":BlackHole 2ch" \
+    -map 0:a:0 \
+    -c:a pcm_f32le \
     "./video_audio_$(date +%Y%m%d_%H%M%S).wav"
 }
 
