@@ -144,13 +144,13 @@ fi
 _dotfiles_path_prepend_if_dir "/opt/homebrew/opt/ffmpeg@7/bin"
 
 capture_audio() {
-  ffmpeg -hide_banner \
-    -thread_queue_size 2048 \
-    -f avfoundation \
-    -i ":BlackHole 2ch" \
-    -map 0:a:0 \
-    -c:a pcm_f32le \
-    "./video_audio_$(date +%Y%m%d_%H%M%S).wav"
+  sox -t coreaudio "BlackHole 2ch" \
+    -r 48000 \
+    -c 1 \
+    -b 24 \
+    -C 8 \
+    "./video_audio_$(date +%Y%m%d_%H%M%S).flac" \
+    remix -
 }
 
 # codex
