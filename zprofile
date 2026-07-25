@@ -121,15 +121,6 @@ _dotfiles_source_if_file "$HOME/.orbstack/shell/init.zsh"
 _dotfiles_path_prepend_if_dir "/Library/Frameworks/Python.framework/Versions/3.12/bin"
 export PATH
 
-# hugging-face
-# ollama
-if [ -d "/Volumes/mac1st2tb/" ]; then
-    export HF_HOME="/Volumes/mac1st2tb/huggingface"
-    export OLLAMA_MODELS="/Volumes/mac1st2tb/ollama"
-else
-    export HF_HOME="$HOME"
-fi
-
 # scripts
 _dotfiles_path_prepend_if_dir "$HOME/scripts"
 export PATH
