@@ -1,0 +1,262 @@
+#!/bin/zsh
+
+set -u
+set -o pipefail
+
+typeset -g VM_ROOT="${FUSIONCTL_VM_ROOT:-$HOME/Virtual Machines.localized}"
+typeset -ga VM_NAMES=()
+typeset -ga VM_PATHS=()
+typeset -ga RUNNING_PATHS=()
+typeset -g RESOLVED_NAME=''
+typeset -g RESOLVED_PATH=''
+
+usage() {
+  print -u2 -- 'usage: fusionctl list'
+  print -u2 -- '       fusionctl start <name-or-vmx-path>'
+  print -u2 -- '       fusionctl status <name-or-vmx-path>'
+  print -u2 -- '       fusionctl ip <name-or-vmx-path>'
+  print -u2 -- '       fusionctl stop <name-or-vmx-path>'
+}
+
+error() {
+  print -u2 -- "fusionctl: $*"
+}
+
+validate_environment() {
+  if ! command -v vmrun >/dev/null 2>&1; then
+    error 'vmrun is not available in PATH'
+    return 2
+  fi
+  if [[ ! -d "$VM_ROOT" || ! -r "$VM_ROOT" ]]; then
+    error "VM root is not a readable directory: $VM_ROOT"
+    return 2
+  fi
+  VM_ROOT="${VM_ROOT:A}"
+}
+
+discover_vms() {
+  local vmx dir bundle name record discovery_output
+  local -a records=()
+  local -i parse_status=0
+
+  VM_NAMES=()
+  VM_PATHS=()
+
+  discovery_output="$(mktemp "${TMPDIR:-/tmp}/fusionctl-find.XXXXXX")" || {
+    error 'could not create temporary file for VM discovery'
+    return 1
+  }
+  if ! find "$VM_ROOT" -type f -name '*.vmx' -print0 > "$discovery_output"; then
+    rm -f "$discovery_output"
+    error 'VM discovery failed'
+    return 1
+  fi
+
+  while IFS= read -r -d $'\0' vmx; do
+    vmx="${vmx:A}"
+    dir="${vmx:h}"
+    bundle=''
+    while [[ "$dir" == "$VM_ROOT" || "$dir" == "$VM_ROOT"/* ]]; do
+      if [[ "${dir:t}" == *.vmwarevm ]]; then
+        bundle="$dir"
+        break
+      fi
+      [[ "$dir" == "$VM_ROOT" ]] && break
+      dir="${dir:h}"
+    done
+
+    if [[ -n "$bundle" ]]; then
+      name="${bundle:t:r}"
+    else
+      name="${vmx:t:r}"
+    fi
+
+    if [[ "$name" == *$'\t'* || "$name" == *$'\n'* || "$vmx" == *$'\t'* || "$vmx" == *$'\n'* ]]; then
+      error "unsupported tab or newline in VM name/path: $vmx"
+      parse_status=2
+      break
+    fi
+    records+=("$name"$'\t'"$vmx")
+  done < "$discovery_output"
+  rm -f "$discovery_output"
+  (( parse_status == 0 )) || return "$parse_status"
+
+  records=("${(@o)records}")
+  for record in "${records[@]}"; do
+    VM_NAMES+=("${record%%$'\t'*}")
+    VM_PATHS+=("${record#*$'\t'}")
+  done
+}
+
+load_running_vms() {
+  local output line
+  local -a lines=()
+  local -i index
+
+  output="$(vmrun -T fusion list)" || {
+    error 'vmrun list failed'
+    return 1
+  }
+  lines=("${(@f)output}")
+  RUNNING_PATHS=()
+  for (( index = 2; index <= ${#lines}; index++ )); do
+    line="${lines[index]}"
+    [[ -z "$line" ]] || RUNNING_PATHS+=("${line:A}")
+  done
+}
+
+is_running() {
+  local expected="$1"
+  local running
+  for running in "${RUNNING_PATHS[@]}"; do
+    [[ "$running" == "$expected" ]] && return 0
+  done
+  return 1
+}
+
+command_list() {
+  local -i index
+  local state
+
+  load_running_vms || return $?
+  printf 'NAME\tSTATE\tPATH\n'
+  for (( index = 1; index <= ${#VM_PATHS}; index++ )); do
+    state=stopped
+    is_running "${VM_PATHS[index]}" && state=running
+    printf '%s\t%s\t%s\n' "${VM_NAMES[index]}" "$state" "${VM_PATHS[index]}"
+  done
+}
+
+resolve_target() {
+  local target="${(j: :)@}"
+  local -a matches=()
+  local -i index
+
+  if [[ -z "$target" ]]; then
+    usage
+    return 2
+  fi
+
+  for (( index = 1; index <= ${#VM_PATHS}; index++ )); do
+    if [[ "${VM_PATHS[index]}" == "$target" ]]; then
+      RESOLVED_NAME="${VM_NAMES[index]}"
+      RESOLVED_PATH="${VM_PATHS[index]}"
+      return 0
+    fi
+  done
+
+  for (( index = 1; index <= ${#VM_NAMES}; index++ )); do
+    [[ "${VM_NAMES[index]}" == "$target" ]] && matches+=("$index")
+  done
+
+  if (( ${#matches} == 0 )); then
+    error "unknown VM: $target; run fusionctl list"
+    return 2
+  fi
+  if (( ${#matches} > 1 )); then
+    error "ambiguous VM name: $target"
+    for index in "${matches[@]}"; do
+      print -u2 -- "  ${VM_PATHS[index]}"
+    done
+    return 2
+  fi
+
+  index="${matches[1]}"
+  RESOLVED_NAME="${VM_NAMES[index]}"
+  RESOLVED_PATH="${VM_PATHS[index]}"
+}
+
+command_status() {
+  load_running_vms || return $?
+  if is_running "$RESOLVED_PATH"; then
+    print -r -- running
+  else
+    print -r -- stopped
+  fi
+}
+
+command_start() {
+  load_running_vms || return $?
+  if is_running "$RESOLVED_PATH"; then
+    print -r -- "already running: $RESOLVED_NAME"
+    return 0
+  fi
+  vmrun -T fusion start "$RESOLVED_PATH" nogui || {
+    error "vmrun start failed: $RESOLVED_NAME"
+    return 1
+  }
+  print -r -- "started: $RESOLVED_NAME"
+}
+
+command_stop() {
+  load_running_vms || return $?
+  if ! is_running "$RESOLVED_PATH"; then
+    print -r -- "already stopped: $RESOLVED_NAME"
+    return 0
+  fi
+  vmrun -T fusion stop "$RESOLVED_PATH" soft || {
+    error "vmrun stop failed: $RESOLVED_NAME"
+    return 1
+  }
+  print -r -- "stopped: $RESOLVED_NAME"
+}
+
+command_ip() {
+  load_running_vms || return $?
+  if ! is_running "$RESOLVED_PATH"; then
+    error "VM is stopped: $RESOLVED_NAME; run fusionctl start $RESOLVED_NAME"
+    return 1
+  fi
+  vmrun -T fusion getGuestIPAddress "$RESOLVED_PATH" -wait || {
+    error "vmrun getGuestIPAddress failed: $RESOLVED_NAME"
+    return 1
+  }
+}
+
+main() {
+  local command="${1-}"
+  [[ -n "$command" ]] || {
+    usage
+    return 2
+  }
+  shift
+
+  case "$command" in
+    list)
+      (( $# == 0 )) || {
+        usage
+        return 2
+      }
+      ;;
+    start|status|ip|stop)
+      (( $# > 0 )) || {
+        usage
+        return 2
+      }
+      ;;
+    *)
+      usage
+      return 2
+      ;;
+  esac
+
+  validate_environment || return $?
+  discover_vms || return $?
+
+  case "$command" in
+    list)
+      command_list
+      ;;
+    start|status|ip|stop)
+      resolve_target "$@" || return $?
+      case "$command" in
+        start) command_start ;;
+        status) command_status ;;
+        ip) command_ip ;;
+        stop) command_stop ;;
+      esac
+      ;;
+  esac
+}
+
+main "$@"

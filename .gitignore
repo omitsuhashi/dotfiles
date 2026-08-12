@@ -3,3 +3,4 @@ __pycache__/
 .venv
 *.egg-info
 /agents/skills.disabled.20260529-213727/
+/.worktrees/
