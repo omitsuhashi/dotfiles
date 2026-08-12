@@ -62,12 +62,26 @@ _dotfiles_path_prepend_if_dir "$PNPM_HOME"
 _dotfiles_path_prepend_if_dir "/Users/omitsuhashi/.antigravity/antigravity/bin"
 
 # Remove all git worktrees except current working directory.
+# Missing/broken worktree paths are pruned so one bad entry cannot stop the loop.
 wt-clean() {
+  local wt current
+  current="$(pwd -P 2>/dev/null || pwd)"
+
   git worktree list --porcelain \
-    | awk '/^worktree /{print $2}' \
+    | awk '/^worktree /{print substr($0, 10)}' \
     | while IFS= read -r wt; do
-        if [ "$wt" != "$(pwd)" ]; then
-          git worktree remove -f "$wt"
+        [ -n "$wt" ] || continue
+        [ "$wt" = "$current" ] && continue
+
+        if [ ! -e "$wt" ]; then
+          printf 'wt-clean: pruning missing worktree %s\n' "$wt" >&2
+          git worktree prune -v || true
+          continue
+        fi
+
+        if ! git worktree remove -f -- "$wt" 2>/dev/null; then
+          printf 'wt-clean: remove failed for %s; pruning\n' "$wt" >&2
+          git worktree prune -v || true
         fi
       done
 }
