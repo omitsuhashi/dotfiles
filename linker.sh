@@ -36,8 +36,6 @@ ln -sf "$DOTFILES_DIR/git/gitmessage" "$HOME/.gitmessage"
 ensure_dir "$HOME/.codex"
 ln -sf "$DOTFILES_DIR/agents/AGENTS.md" "$HOME/.codex/AGENTS.md"
 
-link_children_as_symlinks "$DOTFILES_DIR/agents/skills" "$HOME/.agents/skills"
-
 ensure_dir "$HOME/scripts"
 
 for script in "$DOTFILES_DIR"/scripts/*(N-.); do
