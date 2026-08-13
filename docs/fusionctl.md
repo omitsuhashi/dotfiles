@@ -46,6 +46,47 @@ replace an unrelated path with the same name. A missing destination is
 created, the exact expected symlink is accepted as already installed, and any
 normal file or differently targeted symlink is displayed and refused.
 
+The SSH command form starts a non-login, non-interactive Zsh. It does not read
+`.zprofile` or `.zshrc`, so expose both `fusionctl` and `vmrun` from the
+lightweight, repository-managed `zshenv.d/fusionctl.zsh` snippet. Install a
+copy in the Fusion host's private configuration directory, then add only a
+guarded source line to its existing `.zshenv`; do not replace that file or
+source the full `.zprofile`:
+
+```sh
+ssh local.omitsuhashi zsh -s <<'REMOTE'
+set -eu
+
+source_snippet="$HOME/dotfiles/zshenv.d/fusionctl.zsh"
+install_dir="$HOME/.config/fusionctl"
+installed_snippet="$install_dir/zshenv.zsh"
+zshenv_path="$HOME/.zshenv"
+source_line='[[ -r "$HOME/.config/fusionctl/zshenv.zsh" ]] && source "$HOME/.config/fusionctl/zshenv.zsh"'
+
+test -r "$source_snippet" || {
+  printf "missing or unreadable snippet: %s\n" "$source_snippet" >&2
+  exit 1
+}
+
+mkdir -p "$install_dir"
+install -m 0644 "$source_snippet" "$installed_snippet"
+
+touch "$zshenv_path"
+if grep -Fqx -- "$source_line" "$zshenv_path"; then
+  printf "already configured: %s\n" "$zshenv_path"
+else
+  printf '\n%s\n' "$source_line" >> "$zshenv_path"
+  printf "configured: %s\n" "$zshenv_path"
+fi
+REMOTE
+```
+
+The snippet only prepends `$HOME/scripts` and VMware Fusion's public command
+directory. Existing `.zshenv` setup, such as Cargo initialization, remains in
+place. The installed copy is Fusion-host-specific and is intentionally not
+linked by `linker.sh` on every machine. Re-run the installation after updating
+the repository copy.
+
 Verify both prerequisites in the command environment used by non-interactive
 SSH. This check exits non-zero as soon as either command is unavailable:
 
@@ -57,44 +98,9 @@ ssh local.omitsuhashi '
 '
 ```
 
-If `vmrun` is found but `fusionctl` is not, link `fusionctl` beside the
-already-working `vmrun` command, provided that directory is user-writable:
-
-```sh
-ssh local.omitsuhashi '
-  vmrun_path=$(command -v vmrun) || exit 1
-  bin_dir=${vmrun_path%/*}
-  fusionctl_path=$bin_dir/fusionctl
-  expected_target=$HOME/scripts/fusionctl
-  if test -L "$fusionctl_path"; then
-    current_target=$(readlink "$fusionctl_path") || exit 1
-    if test "$current_target" = "$expected_target"; then
-      printf "already installed: %s -> %s\n" \
-        "$fusionctl_path" "$current_target"
-    else
-      printf "refusing to replace existing symlink:\n" >&2
-      ls -ld "$fusionctl_path" >&2
-      exit 1
-    fi
-  elif test -e "$fusionctl_path"; then
-    printf "refusing to replace existing path:\n" >&2
-    ls -ld "$fusionctl_path" >&2
-    exit 1
-  else
-    test -w "$bin_dir" || {
-      printf "not writable: %s\n" "$bin_dir" >&2
-      exit 1
-    }
-    ln -s "$expected_target" "$fusionctl_path" || exit 1
-    printf "installed: %s -> %s\n" "$fusionctl_path" "$expected_target"
-  fi
-  command -v fusionctl && command -v vmrun
-'
-```
-
-Do not add VM operation functions to shell startup files. If the `vmrun`
-directory is not writable, choose an administrator-approved directory already
-shown in the remote `PATH`, or invoke `$HOME/scripts/fusionctl` explicitly.
+Do not add VM operation functions to shell startup files. Calling
+`$HOME/scripts/fusionctl` directly is not a complete workaround when `vmrun`
+is also absent from the SSH command PATH.
 
 ## Commands
 
@@ -157,8 +163,10 @@ ssh local.omitsuhashi 'FUSIONCTL_VM_ROOT="$HOME/VMs" fusionctl list'
 ## Local verification
 
 ```sh
-zsh -n scripts/fusionctl tests/test_fusionctl.zsh
+zsh -n scripts/fusionctl zshenv.d/fusionctl.zsh \
+  tests/test_fusionctl.zsh tests/test_fusionctl_ssh_env.zsh
 zsh tests/test_fusionctl.zsh
+zsh tests/test_fusionctl_ssh_env.zsh
 zsh tests/test_capture_audio.zsh
 git diff --check
 ```

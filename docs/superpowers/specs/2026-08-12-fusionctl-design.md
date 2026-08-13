@@ -53,9 +53,13 @@ is verified with:
 ssh fusion-host 'command -v fusionctl && command -v vmrun'
 ```
 
-The concrete symlink destination is selected from the host's measured SSH
-`PATH`, rather than assuming that an interactive-shell `PATH` also applies to
-remote commands.
+The Fusion host installs `zshenv.d/fusionctl.zsh` as
+`$HOME/.config/fusionctl/zshenv.zsh` and sources that copy from its existing
+`.zshenv`. The snippet prepends `$HOME/scripts` and VMware Fusion's public
+command directory without loading the full interactive or login-shell
+environment. It is not linked globally by `linker.sh`, because `.zshenv`
+ownership differs between machines. Installation preserves the host's
+existing `.zshenv` content and adds only an idempotent, guarded source line.
 
 ## VM discovery
 
