@@ -101,6 +101,64 @@ branch-clean() {
       done
 }
 
+# Open one localhost-bound SSH local port forward in the foreground.
+ssh-tunnel() {
+  if (( $# != 3 )); then
+    print -u2 -- 'usage: ssh-tunnel <ssh-host> <target-ipv4> <local-port>:<target-port>'
+    return 2
+  fi
+
+  local ssh_host="$1"
+  local target_ipv4="$2"
+  local port_mapping="$3"
+  local local_port target_port octet
+  local -a ipv4_octets
+
+  if [[ -z "$ssh_host" || "$ssh_host" == -* ]]; then
+    print -u2 -- "ssh-tunnel: invalid SSH destination: $ssh_host"
+    return 2
+  fi
+
+  if [[ "$target_ipv4" != <->.<->.<->.<-> ]]; then
+    print -u2 -- "ssh-tunnel: invalid target IPv4 address: $target_ipv4"
+    return 2
+  fi
+
+  ipv4_octets=("${(@s:.:)target_ipv4}")
+  for octet in "${ipv4_octets[@]}"; do
+    if (( ${#octet} > 3 )); then
+      print -u2 -- "ssh-tunnel: invalid target IPv4 address: $target_ipv4"
+      return 2
+    fi
+    if (( 10#$octet > 255 )); then
+      print -u2 -- "ssh-tunnel: invalid target IPv4 address: $target_ipv4"
+      return 2
+    fi
+  done
+
+  if [[ "$port_mapping" != <->:<-> ]]; then
+    print -u2 -- "ssh-tunnel: invalid port mapping: $port_mapping"
+    return 2
+  fi
+
+  local_port="${port_mapping%%:*}"
+  target_port="${port_mapping#*:}"
+  if (( ${#local_port} > 5 || ${#target_port} > 5 )); then
+    print -u2 -- "ssh-tunnel: invalid port mapping: $port_mapping"
+    return 2
+  fi
+  if (( 10#$local_port < 1 || 10#$local_port > 65535 \
+    || 10#$target_port < 1 || 10#$target_port > 65535 )); then
+    print -u2 -- "ssh-tunnel: invalid port mapping: $port_mapping"
+    return 2
+  fi
+
+  ssh -N \
+    -o ExitOnForwardFailure=yes \
+    -L "127.0.0.1:${local_port}:${target_ipv4}:${target_port}" \
+    "$ssh_host"
+}
+
 # bun completions
 _dotfiles_source_if_file "/Users/omitsuhashi/.bun/_bun"
 
