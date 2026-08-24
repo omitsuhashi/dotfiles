@@ -166,5 +166,4 @@ _dotfiles_source_if_file "/Users/omitsuhashi/.bun/_bun"
 export BUN_INSTALL="$HOME/.bun"
 _dotfiles_path_prepend_if_dir "$BUN_INSTALL/bin"
 
-# Hermes Agent — ensure ~/.local/bin is on PATH
 export PATH="$HOME/.local/bin:$PATH"

@@ -1,6 +1,7 @@
 [core]
 	excludesfile = /Users/omitsuhashi/.gitignore_global
 	autocrlf = input
+	editor = vim
 
 [user]
 	name = Osamu Mitsuhashi

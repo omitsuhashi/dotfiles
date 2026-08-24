@@ -6,5 +6,6 @@
 .DS_Store
 .obsidian/
 git_toolbox_prj.xml
+.worktrees/
 
 
